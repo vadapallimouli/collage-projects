@@ -1,0 +1,1514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Medicine Scanner</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+<script src="dataset.js"></script>
+<style>
+:root {
+  --green-900: #0a3d20;
+  --green-800: #0d5c30;
+  --green-700: #0f7a40;
+  --green-600: #12a050;
+  --green-500: #16c060;
+  --green-400: #34d870;
+  --green-300: #6ee8a0;
+  --green-100: #d4f5e3;
+  --green-50:  #edfcf4;
+  --slate-900: #0f1923;
+  --slate-800: #1a2635;
+  --slate-700: #243347;
+  --slate-600: #3c4f66;
+  --slate-400: #7a90a8;
+  --slate-200: #d0dae5;
+  --slate-100: #e8eef5;
+  --slate-50:  #f4f7fb;
+  --white: #ffffff;
+  --red-500: #ef4444;
+  --amber-400: #fbbf24;
+  --amber-50: #fffbeb;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+  --shadow: 0 4px 16px rgba(0,0,0,.10), 0 2px 6px rgba(0,0,0,.06);
+  --shadow-lg: 0 10px 40px rgba(0,0,0,.14);
+  --transition: all .22s cubic-bezier(.4,0,.2,1);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--slate-50);
+  color: var(--slate-800);
+  min-height: 100vh;
+  background-image:
+    radial-gradient(ellipse 60% 40% at 80% 10%, rgba(22,192,96,.07) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 50% at 10% 80%, rgba(22,192,96,.05) 0%, transparent 60%);
+}
+
+/* ── LAYOUT ── */
+.page { max-width: 860px; margin: 0 auto; padding: 28px 20px 60px; }
+
+/* ── TOPBAR ── */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 32px; gap: 16px; flex-wrap: wrap;
+}
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand-icon {
+  width: 48px; height: 48px; background: linear-gradient(135deg, var(--green-600), var(--green-800));
+  border-radius: 14px; display: grid; place-items: center; font-size: 22px;
+  box-shadow: 0 4px 14px rgba(12,96,50,.35);
+}
+.brand-name { font-family: 'Playfair Display', serif; font-size: 22px; color: var(--slate-900); line-height: 1.1; }
+.brand-sub { font-size: 12px; color: var(--slate-400); font-weight: 500; letter-spacing: .4px; }
+.ds-pill {
+  display: flex; align-items: center; gap: 7px; background: var(--white);
+  border: 1.5px solid var(--slate-200); border-radius: 100px;
+  padding: 7px 14px; font-size: 13px; font-weight: 600;
+  color: var(--slate-600); box-shadow: var(--shadow-sm);
+  transition: var(--transition); cursor: pointer;
+}
+.ds-pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber-400); flex-shrink: 0; }
+.ds-pill.ready .dot { background: var(--green-500); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.dataset-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(15,25,35,.45);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 50;
+}
+.dataset-modal.open {
+  display: flex;
+}
+.dataset-sheet {
+  width: min(560px, 100%);
+  max-height: 80vh;
+  overflow: auto;
+  background: var(--white);
+  border-radius: 20px;
+  border: 1.5px solid var(--slate-100);
+  box-shadow: var(--shadow-lg);
+  padding: 24px;
+}
+.dataset-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.dataset-sheet-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--slate-900);
+}
+.dataset-sheet-sub {
+  font-size: 13px;
+  color: var(--slate-500);
+  margin-top: 4px;
+}
+.dataset-close {
+  width: 38px;
+  height: 38px;
+  border: 1.5px solid var(--slate-200);
+  border-radius: 999px;
+  background: var(--white);
+  color: var(--slate-700);
+  font-size: 20px;
+  cursor: pointer;
+}
+.category-list {
+  display: grid;
+  gap: 10px;
+}
+.category-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1.5px solid var(--slate-100);
+  border-radius: 14px;
+  background: var(--slate-50);
+}
+.category-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--slate-800);
+}
+.category-count {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--green-700);
+}
+
+/* ── HERO ── */
+.hero {
+  background: linear-gradient(135deg, var(--green-800) 0%, var(--green-900) 100%);
+  border-radius: var(--radius); padding: 36px 40px; margin-bottom: 20px;
+  position: relative; overflow: hidden; color: var(--white);
+  box-shadow: var(--shadow-lg);
+}
+.hero::before {
+  content: ''; position: absolute; inset: 0;
+  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+.hero-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.18);
+  border-radius: 100px; padding: 5px 12px; font-size: 12px; font-weight: 600;
+  letter-spacing: .6px; text-transform: uppercase; margin-bottom: 16px; color: var(--green-300);
+}
+.hero h1 { font-family: 'Playfair Display', serif; font-size: clamp(24px,4vw,34px); line-height: 1.2; margin-bottom: 10px; }
+.hero p { font-size: 15px; color: rgba(255,255,255,.72); line-height: 1.6; max-width: 520px; }
+.hero-steps {
+  display: flex; gap: 10px; margin-top: 24px; flex-wrap: wrap;
+}
+.step-chip {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.14);
+  border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 500;
+}
+.step-num {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--green-500); color: var(--white);
+  font-size: 11px; font-weight: 700; display: grid; place-items: center; flex-shrink: 0;
+}
+
+/* ── CARD ── */
+.card {
+  background: var(--white); border-radius: var(--radius);
+  border: 1.5px solid var(--slate-100); padding: 28px;
+  margin-bottom: 18px; box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+}
+.card:hover { box-shadow: var(--shadow); }
+.card-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 20px; gap: 12px;
+}
+.card-title {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 15px; font-weight: 700; color: var(--slate-800);
+}
+.icon-badge {
+  width: 34px; height: 34px; border-radius: 9px;
+  display: grid; place-items: center; font-size: 16px; flex-shrink: 0;
+}
+.icon-badge.green { background: var(--green-50); }
+.icon-badge.blue  { background: #eff6ff; }
+.icon-badge.purple{ background: #f5f3ff; }
+
+/* ── UPLOAD ZONE ── */
+.drop-zone {
+  border: 2px dashed var(--slate-200); border-radius: var(--radius-sm);
+  padding: 40px 24px; text-align: center; cursor: pointer;
+  position: relative; transition: var(--transition);
+  background: var(--slate-50);
+}
+.drop-zone:hover, .drop-zone.drag-over {
+  border-color: var(--green-500); background: var(--green-50);
+}
+.drop-zone input[type=file] {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+}
+.drop-icon { font-size: 44px; margin-bottom: 12px; }
+.drop-title { font-size: 16px; font-weight: 600; color: var(--slate-700); margin-bottom: 4px; }
+.drop-sub { font-size: 13px; color: var(--slate-400); }
+.drop-sub span { color: var(--green-600); font-weight: 600; }
+
+#previewWrap { display: none; margin-top: 18px; text-align: center; }
+#previewImg {
+  max-height: 200px; max-width: 100%; border-radius: 10px;
+  box-shadow: var(--shadow); object-fit: contain;
+}
+.preview-badge {
+  display: inline-block; margin-top: 8px; font-size: 12px; font-weight: 600;
+  color: var(--green-700); background: var(--green-50);
+  border: 1px solid var(--green-300); border-radius: 100px; padding: 4px 10px;
+}
+.preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+.preview-item {
+  border: 1.5px solid var(--slate-100);
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--white);
+  box-shadow: var(--shadow-sm);
+}
+.preview-item img {
+  width: 100%;
+  height: 120px;
+  object-fit: contain;
+  border-radius: 10px;
+  background: var(--slate-50);
+}
+.preview-item .preview-badge {
+  display: inline-flex;
+  margin-top: 10px;
+}
+
+/* ── PROGRESS ── */
+.progress-wrap { margin: 14px 0; display: none; }
+.progress-track {
+  height: 6px; background: var(--slate-100); border-radius: 100px; overflow: hidden;
+}
+.progress-fill {
+  height: 100%; background: linear-gradient(90deg, var(--green-500), var(--green-400));
+  border-radius: 100px; width: 0%; transition: width .4s ease;
+}
+.progress-label { font-size: 13px; color: var(--slate-500); margin-top: 6px; }
+
+/* ── BUTTONS ── */
+.btn-row { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+.btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 12px 22px; border-radius: var(--radius-sm);
+  font-family: inherit; font-size: 14px; font-weight: 600;
+  cursor: pointer; border: none; transition: var(--transition);
+  text-decoration: none;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--green-600), var(--green-800));
+  color: var(--white); box-shadow: 0 3px 12px rgba(12,96,50,.30);
+}
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--green-700), var(--green-900));
+  transform: translateY(-1px); box-shadow: 0 6px 18px rgba(12,96,50,.38);
+}
+.btn-primary:disabled { background: var(--slate-200); color: var(--slate-400); cursor: not-allowed; box-shadow: none; }
+.btn-outline {
+  background: var(--white); color: var(--slate-600);
+  border: 1.5px solid var(--slate-200); box-shadow: var(--shadow-sm);
+}
+.btn-outline:hover { border-color: var(--slate-300); background: var(--slate-50); }
+
+/* ── SEARCH ── */
+.search-group { display: flex; gap: 10px; }
+.input-wrap { flex: 1; position: relative; }
+.input-wrap input {
+  width: 100%; padding: 12px 16px 12px 42px;
+  border: 1.5px solid var(--slate-200); border-radius: var(--radius-sm);
+  font-family: inherit; font-size: 14px; color: var(--slate-800);
+  background: var(--white); outline: none; transition: var(--transition);
+}
+.input-wrap input:focus { border-color: var(--green-500); box-shadow: 0 0 0 3px rgba(22,192,96,.12); }
+.input-wrap input::placeholder { color: var(--slate-400); }
+.input-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 16px; }
+
+/* ── STATUS BAR ── */
+.status-bar {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; font-weight: 500; min-height: 22px;
+  margin-top: 10px; color: var(--slate-500);
+}
+.status-bar.success { color: var(--green-700); }
+.status-bar.error { color: var(--red-500); }
+
+/* ── RESULT SECTION ── */
+#resultSection { display: none; }
+.results-stack {
+  display: grid;
+  gap: 18px;
+}
+.result-card {
+  border: 1.5px solid var(--slate-100);
+  border-radius: var(--radius-sm);
+  padding: 20px;
+  background: var(--white);
+}
+.result-card.not-found-card {
+  background: linear-gradient(135deg, #fff7f7, #fffdfd);
+  border-color: #fecaca;
+}
+.result-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+.scan-file {
+  font-size: 12px;
+  color: var(--slate-400);
+  font-weight: 600;
+}
+.header-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 160px;
+}
+.category-highlight {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #fff4d9, #ffe8b5);
+  border: 1.5px solid #f3d28f;
+  color: #8a5a00;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: .4px;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+}
+.translate-btn {
+  margin-top: 14px;
+}
+
+.result-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  margin-bottom: 20px; gap: 16px; flex-wrap: wrap;
+}
+.med-name { font-family: 'Playfair Display', serif; font-size: 26px; color: var(--slate-900); }
+.med-tag {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px;
+  color: var(--green-700); background: var(--green-50); border: 1px solid var(--green-300);
+  border-radius: 100px; padding: 5px 12px; white-space: nowrap; align-self: flex-start;
+}
+
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media(max-width:520px){ .info-grid { grid-template-columns: 1fr; } }
+.info-full { grid-column: 1 / -1; }
+
+.info-block {
+  background: var(--slate-50); border: 1.5px solid var(--slate-100);
+  border-radius: var(--radius-sm); padding: 16px;
+}
+.info-label {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px;
+  color: var(--slate-500); margin-bottom: 7px;
+}
+.info-label .ico { font-size: 13px; }
+.info-value { font-size: 14px; color: var(--slate-700); line-height: 1.6; font-weight: 500; }
+
+/* ── DIVIDER ── */
+.divider { height: 1.5px; background: var(--slate-100); border-radius: 2px; margin: 20px 0; }
+
+/* ── TRANSLATOR ── */
+#translatorSection { display: none; }
+
+.lang-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
+.lang-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 12px 8px; border: 1.5px solid var(--slate-200); border-radius: var(--radius-sm);
+  background: var(--white); cursor: pointer; font-family: inherit;
+  font-size: 12px; font-weight: 600; color: var(--slate-600);
+  transition: var(--transition); text-align: center;
+}
+.lang-btn:hover { border-color: var(--green-400); background: var(--green-50); color: var(--green-700); }
+.lang-btn.active {
+  border-color: var(--green-600); background: linear-gradient(135deg, var(--green-600), var(--green-800));
+  color: var(--white); box-shadow: 0 2px 8px rgba(12,96,50,.28);
+}
+.lang-flag { font-size: 20px; }
+.lang-name { font-size: 11px; }
+
+.translate-status {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--slate-500); margin: 14px 0 0;
+}
+.translate-status.loading { color: var(--green-600); }
+.translate-status.done { color: var(--green-700); }
+
+.translated-panel {
+  background: linear-gradient(135deg, #fffbeb, #fef9e7);
+  border: 1.5px solid #fde68a; border-radius: var(--radius-sm);
+  padding: 20px; margin-top: 14px;
+}
+.translated-panel .t-label {
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px;
+  color: #b45309; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
+}
+.translated-panel .t-value {
+  font-size: 14px; color: var(--slate-700); line-height: 2; white-space: pre-line;
+}
+
+/* ── NOT FOUND ── */
+.not-found {
+  text-align: center; padding: 36px 20px;
+}
+.not-found .nf-icon { font-size: 56px; margin-bottom: 14px; }
+.not-found h3 { font-size: 18px; font-weight: 700; color: var(--slate-700); margin-bottom: 6px; }
+.not-found p { font-size: 14px; color: var(--slate-400); }
+
+/* ── SOURCES ── */
+.sources-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.source-card {
+  background: var(--slate-50); border: 1.5px solid var(--slate-100);
+  border-radius: var(--radius-sm); padding: 14px;
+}
+.source-badge {
+  display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .6px; background: var(--green-100); color: var(--green-800);
+  border-radius: 100px; padding: 3px 8px; margin-bottom: 6px;
+}
+.source-name { font-size: 13px; font-weight: 700; color: var(--slate-700); margin-bottom: 2px; }
+.source-desc { font-size: 12px; color: var(--slate-500); line-height: 1.5; }
+.source-link {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; color: var(--green-600); font-weight: 600; text-decoration: none;
+  margin-top: 6px;
+}
+.source-link:hover { text-decoration: underline; }
+
+/* ── FOOTER ── */
+.footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1.5px solid var(--slate-100); }
+.footer-team {
+  font-size: 13px; color: var(--slate-500); font-weight: 500; margin-bottom: 4px;
+}
+.footer-sub { font-size: 12px; color: var(--slate-400); }
+
+/* ── SPINNER ── */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  width: 16px; height: 16px; border: 2.5px solid rgba(22,192,96,.25);
+  border-top-color: var(--green-600); border-radius: 50%;
+  animation: spin .7s linear infinite; flex-shrink: 0;
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-icon">💊</div>
+      <div>
+        <div class="brand-name">MediScan</div>
+        <div class="brand-sub">Smart Medicine Scanner</div>
+      </div>
+    </div>
+    <div class="ds-pill" id="dsPill">
+      <div class="dot"></div>
+      <span id="dsLabel">Loading dataset…</span>
+    </div>
+  </div>
+
+  <div class="dataset-modal" id="datasetModal" onclick="closeDatasetModal(event)">
+    <div class="dataset-sheet" onclick="event.stopPropagation()">
+      <div class="dataset-sheet-head">
+        <div>
+          <div class="dataset-sheet-title">Dataset Categories</div>
+          <div class="dataset-sheet-sub" id="datasetSummary">Category summary from your loaded medicine dataset</div>
+        </div>
+        <button class="dataset-close" type="button" onclick="closeDatasetModal()">&times;</button>
+      </div>
+      <div class="category-list" id="categoryList"></div>
+    </div>
+  </div>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-tag">⚗️ Final Review · Elements of Computing</div>
+    <h1>Drug Information Retrieval<br>Using OCR Technology</h1>
+    <p>Upload a medicine image. Our system extracts text, matches against a curated database, and delivers instant drug information with multi-language translation.</p>
+    <div class="hero-steps">
+      <div class="step-chip"><div class="step-num">1</div> Upload Image</div>
+      <div class="step-chip"><div class="step-num">2</div> OCR Extracts Text</div>
+      <div class="step-chip"><div class="step-num">3</div> Dataset Match</div>
+      <div class="step-chip"><div class="step-num">4</div> Translate &amp; Display</div>
+    </div>
+  </div>
+
+  <!-- SCAN CARD -->
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">
+        <div class="icon-badge green">📷</div>
+        Scan Medicine Image
+      </div>
+    </div>
+
+    <div class="drop-zone" id="dropZone">
+      <input type="file" id="imageInput" accept="image/*" multiple>
+      <div class="drop-icon">🖼️</div>
+      <div class="drop-title">Drop your medicine image here</div>
+      <div class="drop-sub"><span>Click to browse</span> or drag &amp; drop · JPG, PNG, WEBP</div>
+    </div>
+
+    <div id="previewWrap">
+      <div class="preview-grid" id="previewGrid"></div>
+    </div>
+
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-label" id="progressLabel">Initializing OCR…</div>
+    </div>
+
+    <div class="status-bar" id="statusBar"></div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="scanBtn" onclick="scanImage()" disabled>
+        🔍 Scan Medicine
+      </button>
+      <button class="btn btn-outline" onclick="resetAll()">↺ Reset</button>
+    </div>
+  </div>
+
+  <!-- MANUAL SEARCH CARD -->
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">
+        <div class="icon-badge blue">🔎</div>
+        Manual Search
+      </div>
+    </div>
+    <div class="search-group">
+      <div class="input-wrap">
+        <span class="input-icon">🔍</span>
+        <input type="text" id="manualInput"
+               placeholder="Type medicine name (e.g. Paracetamol, Augmentin…)"
+               onkeydown="if(event.key==='Enter') manualSearch()">
+      </div>
+      <button class="btn btn-primary" onclick="manualSearch()">Search</button>
+    </div>
+    <div class="status-bar" id="searchStatus"></div>
+  </div>
+
+  <!-- RESULT + TRANSLATOR CARD -->
+  <div class="card" id="resultSection">
+
+    <div class="results-stack" id="resultsList"></div>
+
+    <div class="divider"></div>
+
+    <!-- TRANSLATOR -->
+    <div id="translatorSection">
+      <div class="card-title" style="margin-bottom:16px;">
+        <div class="icon-badge purple">🌐</div>
+        Translate Information
+      </div>
+
+      <div class="lang-grid" id="langGrid">
+        <button class="lang-btn active" onclick="selectLang('en',this)">
+          <span class="lang-flag">🇬🇧</span>
+          <span class="lang-name">English</span>
+        </button>
+        <button class="lang-btn" onclick="selectLang('ta',this)">
+          <span class="lang-flag">🇮🇳</span>
+          <span class="lang-name">Tamil</span>
+        </button>
+        <button class="lang-btn" onclick="selectLang('hi',this)">
+          <span class="lang-flag">🇮🇳</span>
+          <span class="lang-name">Hindi</span>
+        </button>
+        <button class="lang-btn" onclick="selectLang('te',this)">
+          <span class="lang-flag">🇮🇳</span>
+          <span class="lang-name">Telugu</span>
+        </button>
+        <button class="lang-btn" onclick="selectLang('ml',this)">
+          <span class="lang-flag">🇮🇳</span>
+          <span class="lang-name">Malayalam</span>
+        </button>
+        <button class="lang-btn" onclick="selectLang('kn',this)">
+          <span class="lang-flag">🇮🇳</span>
+          <span class="lang-name">Kannada</span>
+        </button>
+        <button class="lang-btn" onclick="selectLang('mr',this)">
+          <span class="lang-flag">🇮🇳</span>
+          <span class="lang-name">Marathi</span>
+        </button>
+        <button class="lang-btn" onclick="selectLang('bn',this)">
+          <span class="lang-flag">🇮🇳</span>
+          <span class="lang-name">Bengali</span>
+        </button>
+      </div>
+
+      <div class="translate-status" id="transStatus" style="display:none;"></div>
+      <div id="transOutput"></div>
+      <div class="btn-row" style="margin-top:14px;">
+        <button class="btn btn-primary" type="button" id="speakBtn" onclick="speakCurrentContent()" disabled>
+          🔊 Speak Details
+        </button>
+        <button class="btn btn-outline" type="button" id="stopSpeakBtn" onclick="stopSpeaking()" disabled>
+          ⏹ Stop
+        </button>
+      </div>
+    </div>
+
+  </div><!-- end result card -->
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div class="footer-team">
+      B. Sharmitha · H. Bala Sri Siva Sai Surya Tej · V. Mouli Sri · K. Bhanu Prakash
+    </div>
+    <div class="footer-sub">
+      Smart Medicine Scanner · Elements of Computing 2 · Final Review 2026
+    </div>
+  </div>
+
+</div><!-- end page -->
+
+<script>
+/* ═══════════════════════════════
+   STATE
+═══════════════════════════════ */
+let medicines    = [];
+let currentMed   = null;
+let currentLang  = 'en';
+let transCache   = {};
+let datasetLoaded = false;
+let selectedFiles = [];
+let categorySummary = [];
+
+const COMMON_MEDICINES = [
+  {
+    medicine: 'Paracetamol',
+    category: 'Pain Relief / Fever',
+    usage: 'Fever and mild to moderate pain relief.',
+    adult_dosage: '500-1000 mg every 4-6 hours as advised by a doctor. Do not exceed 4 g per day.',
+    children_dosage: '10-15 mg/kg every 4-6 hours only with pediatric guidance.',
+    precautions: 'Avoid if you have severe liver disease or if you are already taking other paracetamol-containing medicines. Pregnant or breastfeeding women should use it only on doctor advice.',
+    side_effects: 'Nausea, rash, liver damage in overdose.',
+    aliases: 'acetaminophen, dolo 650, dolo, crocin, calpol, pyrenus',
+    treatment_duration: 'Usually taken only while fever or pain is present, for the shortest duration needed.',
+    stop_when: 'Stop when the fever or pain settles, unless a doctor has told you to continue.',
+    doctor_consult: 'Consult a doctor if symptoms last more than 3 days, if fever is high, or if there are liver problems.'
+  },
+  {
+    medicine: 'Ibuprofen',
+    category: 'Pain Relief / Fever',
+    usage: 'Pain relief, inflammation reduction, and fever control.',
+    adult_dosage: '200-400 mg every 6-8 hours with food as advised by a doctor.',
+    children_dosage: '5-10 mg/kg every 6-8 hours only with pediatric guidance.',
+    precautions: 'Avoid if you have stomach ulcers, kidney disease, or severe dehydration. Pregnant women should avoid it unless a doctor advises it. Take it with food.',
+    side_effects: 'Stomach pain, nausea, dizziness, acidity.',
+    aliases: 'brufen, combiflam, advil',
+    treatment_duration: 'Usually used for short-term pain or fever relief.',
+    stop_when: 'Stop when pain or fever improves, unless your doctor advises longer use.',
+    doctor_consult: 'Consult a doctor before longer use and immediately if stomach pain, black stools, or kidney problems appear.'
+  },
+  {
+    medicine: 'Azithromycin',
+    category: 'Antibiotic',
+    usage: 'Treatment of bacterial infections of the throat, chest, ear, and skin.',
+    adult_dosage: 'Usually 500 mg once daily for 3-5 days, only if prescribed.',
+    children_dosage: 'Only with pediatric prescription.',
+    precautions: 'Avoid if you are allergic to azithromycin or similar antibiotics. Pregnant or breastfeeding women should consult a doctor. Use carefully in liver or heart problems.',
+    side_effects: 'Nausea, diarrhea, abdominal pain.',
+    aliases: 'azithral, azee, zithromax',
+    treatment_duration: 'Usually 3 to 5 days, but follow the prescribed course exactly.',
+    stop_when: 'Do not stop early. Stop only after completing the full prescribed course or on doctor advice.',
+    doctor_consult: 'Consult a doctor if side effects are severe, if symptoms do not improve, or before taking it for viral illness.'
+  },
+  {
+    medicine: 'Augmentin',
+    category: 'Antibiotic',
+    usage: 'Treatment of bacterial infections including respiratory, urinary, skin, and dental infections.',
+    adult_dosage: 'Dose depends on strength and infection severity. Use only as prescribed.',
+    children_dosage: 'Only with pediatric prescription.',
+    precautions: 'Avoid if you have penicillin allergy. Pregnant or breastfeeding women should use it only on doctor advice. Complete the full prescribed course.',
+    side_effects: 'Diarrhea, nausea, rash.',
+    aliases: 'augmentin 625, augmentin duo, amoxyclav',
+    treatment_duration: 'Usually 5 to 7 days or as prescribed.',
+    stop_when: 'Do not stop early. Stop only after completing the full course or on doctor advice.',
+    doctor_consult: 'Consult a doctor if there is allergy, severe diarrhea, rash, or no improvement after a few days.'
+  }
+];
+
+const COMMON_ALIASES = {
+  'paracetamol': ['paracetamol', 'acetaminophen', 'dolo 650', 'dolo', 'crocin', 'calpol', 'pyremol'],
+  'ibuprofen': ['ibuprofen', 'brufen', 'combiflam'],
+  'amoxicillin': ['amoxicillin', 'amoxycillin', 'mox', 'novamox'],
+  'augmentin': ['augmentin', 'augmentin duo', 'augmentin 625'],
+  'azithromycin': ['azithromycin', 'azithral', 'azee', 'zithromax'],
+  'cetirizine': ['cetirizine', 'cetzine', 'okacet'],
+  'pantoprazole': ['pantoprazole', 'pan', 'pantocid'],
+  'rabeprazole': ['rabeprazole', 'rablet'],
+  'metformin': ['metformin', 'glycomet', 'gluformin']
+};
+
+const LANG_NAMES = {
+  en:'English', ta:'Tamil', hi:'Hindi', te:'Telugu',
+  ml:'Malayalam', kn:'Kannada', mr:'Marathi', bn:'Bengali'
+};
+
+const LANG_CODES = {
+  en:'en-IN', ta:'ta-IN', hi:'hi-IN', te:'te-IN',
+  ml:'ml-IN', kn:'kn-IN', mr:'mr-IN', bn:'bn-IN'
+};
+
+/* ═══════════════════════════════
+   FILE INPUT & DRAG-DROP
+═══════════════════════════════ */
+const fileInput = document.getElementById('imageInput');
+const dropZone  = document.getElementById('dropZone');
+const dsPill = document.getElementById('dsPill');
+fileInput.multiple = true;
+dsPill.addEventListener('click', openDatasetModal);
+
+fileInput.addEventListener('change', () => handleFiles(Array.from(fileInput.files)));
+
+dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', ()  => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+  if (files.length) {
+    const limited = files.slice(0, 10);
+    const dt = new DataTransfer();
+    limited.forEach(file => dt.items.add(file));
+    fileInput.files = dt.files;
+    handleFiles(limited);
+  }
+});
+
+function handleFiles(files) {
+  const validFiles = files.filter(file => file && file.type.startsWith('image/')).slice(0, 10);
+  selectedFiles = validFiles;
+
+  const previewWrap = document.getElementById('previewWrap');
+  const previewGrid = document.getElementById('previewGrid');
+  previewGrid.innerHTML = '';
+
+  if (!validFiles.length) {
+    previewWrap.style.display = 'none';
+    document.getElementById('scanBtn').disabled = true;
+    return;
+  }
+
+  validFiles.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const item = document.createElement('div');
+      item.className = 'preview-item';
+      item.innerHTML = `
+        <img src="${e.target.result}" alt="${escapeHtml(file.name)}">
+        <div class="preview-badge">${escapeHtml(file.name)}</div>
+      `;
+      previewGrid.appendChild(item);
+    };
+    reader.readAsDataURL(file);
+  });
+
+  previewWrap.style.display = 'block';
+  document.getElementById('scanBtn').disabled = false;
+  setStatus(`Ready to scan ${validFiles.length} image${validFiles.length > 1 ? 's' : ''}.`, '');
+}
+
+/* ═══════════════════════════════
+   LOAD DATASET
+═══════════════════════════════ */
+loadInitialDataset();
+
+function loadInitialDataset() {
+  if (Array.isArray(window.MEDICINE_DATASET) && window.MEDICINE_DATASET.length) {
+    applyDataset(window.MEDICINE_DATASET);
+    return;
+  }
+
+  Papa.parse('dataset.csv', {
+    download: true, header: true, skipEmptyLines: true,
+    complete(res) {
+      applyDataset(res.data);
+    },
+    error(err) {
+      handleDatasetError(err);
+    }
+  });
+}
+
+function applyDataset(rows) {
+  const mergedRows = [...COMMON_MEDICINES, ...rows];
+  medicines = mergedRows
+    .filter(m => m.medicine && m.medicine.trim() !== '')
+    .map(enrichMedicineRecord)
+    .filter((med, index, list) =>
+      index === list.findIndex(item => normalizeSearchText(item.medicine) === normalizeSearchText(med.medicine))
+    );
+  datasetLoaded = medicines.length > 0;
+
+  const pill = document.getElementById('dsPill');
+  const lbl = document.getElementById('dsLabel');
+
+  if (!datasetLoaded) {
+    handleDatasetError(new Error('Dataset is empty or invalid.'));
+    return;
+  }
+
+  pill.classList.add('ready');
+  lbl.textContent = `${medicines.length} medicines loaded`;
+  categorySummary = buildCategorySummary(medicines);
+  renderCategorySummary();
+  console.log('[MediScan] Dataset ready:', medicines.length, 'entries');
+}
+
+function handleDatasetError(err) {
+  datasetLoaded = false;
+  document.getElementById('dsLabel').textContent = 'Dataset load failed';
+  console.error('[MediScan] CSV error:', err);
+}
+
+/* ═══════════════════════════════
+   OCR SCAN
+═══════════════════════════════ */
+async function scanImage() {
+  if (!ensureDatasetLoaded()) return;
+  const files = selectedFiles.length ? selectedFiles : Array.from(fileInput.files).slice(0, 10);
+  if (!files.length) { alert('Please upload at least one medicine image first.'); return; }
+
+  resetResult();
+  showProgress(true, 10, 'Starting OCR engine…');
+  setStatus(`🔍 Scanning ${files.length} image${files.length > 1 ? 's' : ''} with Tesseract OCR…`, '');
+
+  document.getElementById('scanBtn').disabled = true;
+
+  try {
+    const results = [];
+    for (let index = 0; index < files.length; index++) {
+      const file = files[index];
+      const base = Math.round((index / files.length) * 100);
+      showProgress(true, Math.max(8, base), `Scanning ${index + 1}/${files.length}: ${file.name}`);
+
+      const { data: { text } } = await Tesseract.recognize(file, 'eng', {
+        logger(m) {
+          if (m.status === 'recognizing text') {
+            const pct = Math.round(((index + m.progress) / files.length) * 100);
+            showProgress(true, Math.min(99, pct), `Scanning ${index + 1}/${files.length}: ${file.name} (${Math.round(m.progress * 100)}%)`);
+          }
+        }
+      });
+
+      console.log('[OCR] Raw text:', file.name, text);
+      const found = matchMedicine(text);
+      results.push({ fileName: file.name, text, medicine: found });
+    }
+
+    showProgress(true, 100, 'Done');
+
+    setTimeout(() => showProgress(false), 700);
+    document.getElementById('scanBtn').disabled = false;
+
+    const foundCount = results.filter(result => result.medicine).length;
+    if (foundCount) {
+      setStatus(`✅ Identified ${foundCount} of ${results.length} medicine image${results.length > 1 ? 's' : ''}.`, 'success');
+      renderResults(results);
+    } else {
+      setStatus('❌ Medicine not recognized. Try manual search below.', 'error');
+      renderResults(results);
+    }
+  } catch (err) {
+    showProgress(false);
+    document.getElementById('scanBtn').disabled = false;
+    setStatus('❌ OCR error: ' + err.message, 'error');
+  }
+}
+
+/* ═══════════════════════════════
+   MANUAL SEARCH
+═══════════════════════════════ */
+function manualSearch() {
+  if (!ensureDatasetLoaded()) return;
+  const q = document.getElementById('manualInput').value.trim().toLowerCase();
+  if (!q) return;
+
+  const found = medicines.find(m =>
+    matchesQuery(m, q)
+  );
+
+  const statusEl = document.getElementById('searchStatus');
+  if (found) {
+    statusEl.className = 'status-bar success';
+    statusEl.textContent = '✅ Found: ' + found.medicine;
+    renderResults([{ fileName: 'Manual Search', text: q, medicine: found }]);
+  } else {
+    statusEl.className = 'status-bar error';
+    statusEl.textContent = '❌ "' + document.getElementById('manualInput').value + '" not found in dataset.';
+    resetResult();
+  }
+}
+
+/* ═══════════════════════════════
+   MATCH ENGINE
+═══════════════════════════════ */
+function matchMedicine(ocrText) {
+  const lc = normalizeSearchText(ocrText);
+  const tokens = new Set(lc.split(/\s+/).filter(word => word.length > 2));
+  let best = null;
+  let bestScore = 0;
+
+  for (const med of medicines) {
+    const aliases = getSearchTerms(med);
+    let score = 0;
+
+    for (const term of aliases) {
+      if (!term) continue;
+      if (lc.includes(term)) score = Math.max(score, 100 + term.length);
+
+      if (term.length >= 5) {
+        const stem = term.substring(0, Math.ceil(term.length * 0.7));
+        if (lc.includes(stem)) score = Math.max(score, 70 + stem.length);
+      }
+
+      const termTokens = term.split(/\s+/).filter(Boolean);
+      const overlap = termTokens.filter(token => tokens.has(token)).length;
+      if (overlap) score = Math.max(score, overlap * 12 + term.length);
+    }
+
+    if (score > bestScore) {
+      best = med;
+      bestScore = score;
+    }
+  }
+
+  return bestScore >= 18 ? best : null;
+}
+
+/* ═══════════════════════════════
+   RENDER RESULT
+═══════════════════════════════ */
+function renderResults(results) {
+  const found = results.filter(result => result.medicine);
+  const list = document.getElementById('resultsList');
+  list.innerHTML = results.map(result => createResultMarkup(result)).join('');
+
+  currentMed  = found.length ? found[0].medicine : null;
+  transCache  = {};
+  currentLang = 'en';
+
+  // reset language selector
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('.lang-btn').classList.add('active');
+  document.getElementById('transOutput').innerHTML   = '';
+  document.getElementById('transStatus').style.display = 'none';
+
+  document.getElementById('resultSection').style.display  = 'block';
+  document.getElementById('translatorSection').style.display = currentMed ? 'block' : 'none';
+
+  setTimeout(() => {
+    document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 100);
+}
+
+function createResultMarkup(result) {
+  if (!result.medicine) {
+    return `
+      <div class="result-card not-found-card">
+        <div class="result-card-head">
+          <div>
+            <div class="med-name" style="font-size:22px;">Not Recognized</div>
+            <div class="scan-file">${escapeHtml(result.fileName)}</div>
+          </div>
+          <div class="med-tag" style="background:#fff1f2;color:#b91c1c;border-color:#fecdd3;">No Match</div>
+        </div>
+        <div class="info-block info-full">
+          <div class="info-label"><span class="ico">📝</span> OCR Text</div>
+          <div class="info-value">${escapeHtml(result.text || 'No text detected')}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  const med = result.medicine;
+  const safeName = JSON.stringify(med.medicine);
+  return `
+    <div class="result-card">
+      <div class="result-card-head">
+        <div>
+          <div class="med-name">${escapeHtml(med.medicine)}</div>
+          <div class="scan-file">${escapeHtml(result.fileName)}</div>
+        </div>
+        <div class="header-meta">
+          <div class="category-highlight">${escapeHtml((med.category || 'General Medicine').toUpperCase())}</div>
+        </div>
+        <div class="med-tag">✅ Identified</div>
+      </div>
+
+      <div class="info-grid">
+        <div class="info-block">
+          <div class="info-label"><span class="ico">📅</span> Treatment Duration</div>
+          <div class="info-value">${escapeHtml(med.treatment_duration || 'Consult a doctor')}</div>
+        </div>
+        <div class="info-block info-full">
+          <div class="info-label"><span class="ico">💊</span> Usage / Indication</div>
+          <div class="info-value">${escapeHtml(med.usage || 'Information not available')}</div>
+        </div>
+        <div class="info-block">
+          <div class="info-label"><span class="ico">👤</span> Adult Dosage</div>
+          <div class="info-value">${escapeHtml(med.adult_dosage || 'Information not available')}</div>
+        </div>
+        <div class="info-block">
+          <div class="info-label"><span class="ico">👶</span> Children Dosage</div>
+          <div class="info-value">${escapeHtml(med.children_dosage || 'Information not available')}</div>
+        </div>
+        <div class="info-block">
+          <div class="info-label"><span class="ico">⚠️</span> Precautions</div>
+          <div class="info-value">${escapeHtml(med.precautions || 'Information not available')}</div>
+        </div>
+        <div class="info-block">
+          <div class="info-label"><span class="ico">🔴</span> Side Effects</div>
+          <div class="info-value">${escapeHtml(med.side_effects || 'Information not available')}</div>
+        </div>
+        <div class="info-block">
+          <div class="info-label"><span class="ico">🛑</span> When To Stop</div>
+          <div class="info-value">${escapeHtml(med.stop_when || 'Consult a doctor')}</div>
+        </div>
+        <div class="info-block">
+          <div class="info-label"><span class="ico">🩺</span> Doctor Advice</div>
+          <div class="info-value">${escapeHtml(med.doctor_consult || 'Consult a doctor before starting or stopping this medicine.')}</div>
+        </div>
+      </div>
+
+      <button class="btn btn-outline translate-btn" onclick='activateTranslation(${safeName})'>🌐 Translate This Result</button>
+    </div>
+  `;
+}
+
+function activateTranslation(medicineName) {
+  const med = medicines.find(item => item.medicine === medicineName);
+  if (!med) return;
+
+  currentMed = med;
+  transCache = {};
+  currentLang = 'en';
+  stopSpeaking();
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('.lang-btn').classList.add('active');
+  document.getElementById('transOutput').innerHTML = '';
+  document.getElementById('transStatus').style.display = 'none';
+  document.getElementById('translatorSection').style.display = 'block';
+  updateSpeakButtons();
+  document.getElementById('translatorSection').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function resetResult() {
+  stopSpeaking();
+  currentMed = null;
+  document.getElementById('resultsList').innerHTML = '';
+  document.getElementById('resultSection').style.display = 'none';
+  document.getElementById('translatorSection').style.display = 'none';
+  updateSpeakButtons();
+}
+
+/* ═══════════════════════════════
+   TRANSLATOR
+═══════════════════════════════ */
+async function selectLang(lang, btn) {
+  if (!currentMed) return;
+  stopSpeaking();
+
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentLang = lang;
+
+  const statusEl = document.getElementById('transStatus');
+  const outputEl = document.getElementById('transOutput');
+
+  if (lang === 'en') {
+    statusEl.style.display = 'none';
+    outputEl.innerHTML = '';
+    updateSpeakButtons();
+    return;
+  }
+
+  // Use cache
+  if (transCache[lang]) {
+    showTranslation(transCache[lang], lang);
+    updateSpeakButtons();
+    return;
+  }
+
+  // Show loading
+  statusEl.style.display = 'flex';
+  statusEl.className = 'translate-status loading';
+  statusEl.innerHTML = '<div class="spinner"></div> Translating to ' + LANG_NAMES[lang] + '…';
+  outputEl.innerHTML = '';
+
+  const payload =
+`Medicine: ${currentMed.medicine}
+Category: ${currentMed.category}
+Treatment Duration: ${currentMed.treatment_duration}
+Usage: ${currentMed.usage}
+Adult Dosage: ${currentMed.adult_dosage}
+Children Dosage: ${currentMed.children_dosage}
+Precautions: ${currentMed.precautions}
+Side Effects: ${currentMed.side_effects}
+When To Stop: ${currentMed.stop_when}
+Doctor Advice: ${currentMed.doctor_consult}`;
+
+  try {
+    const result = await translateText(payload, lang);
+    transCache[lang] = result;
+    showTranslation(result, lang);
+
+    statusEl.className = 'translate-status done';
+    statusEl.innerHTML = '✅ Translated to ' + LANG_NAMES[lang];
+    updateSpeakButtons();
+  } catch (err) {
+    statusEl.className = 'translate-status';
+    statusEl.innerHTML = '❌ Translation failed. Check internet connection.';
+    console.error('[Translate]', err);
+    updateSpeakButtons();
+  }
+}
+
+async function translateText(text, targetLang) {
+  // Google Translate unofficial free endpoint
+  const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
+  const res  = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  return data[0].map(seg => seg[0]).join('');
+}
+
+function showTranslation(translatedText, lang) {
+  document.getElementById('transOutput').innerHTML = `
+    <div class="translated-panel">
+      <div class="t-label">🌐 ${LANG_NAMES[lang]} Translation</div>
+      <div class="t-value">${escapeHtml(translatedText)}</div>
+    </div>
+  `;
+}
+
+function getSpeechText() {
+  if (!currentMed) return '';
+
+  if (currentLang !== 'en' && transCache[currentLang]) {
+    return transCache[currentLang];
+  }
+
+  return `Medicine: ${currentMed.medicine}.
+Category: ${currentMed.category}.
+Treatment duration: ${currentMed.treatment_duration}.
+Usage: ${currentMed.usage}.
+Adult dosage: ${currentMed.adult_dosage}.
+Children dosage: ${currentMed.children_dosage}.
+Precautions: ${currentMed.precautions}.
+Side effects: ${currentMed.side_effects}.
+When to stop: ${currentMed.stop_when}.
+Doctor advice: ${currentMed.doctor_consult}.`;
+}
+
+function speakCurrentContent() {
+  if (!currentMed || !('speechSynthesis' in window)) return;
+
+  const text = getSpeechText();
+  if (!text) return;
+
+  stopSpeaking();
+  const chunks = text
+    .split(/(?<=[.!?])\s+/)
+    .map(chunk => chunk.trim())
+    .filter(Boolean);
+
+  const voices = window.speechSynthesis.getVoices();
+  const langCode = LANG_CODES[currentLang] || 'en-IN';
+  const matchingVoice = pickPreferredVoice(voices, langCode);
+
+  chunks.forEach((chunk, index) => {
+    const utterance = new SpeechSynthesisUtterance(chunk);
+    utterance.lang = langCode;
+    utterance.rate = currentLang === 'en' ? 0.88 : 0.82;
+    utterance.pitch = 1.08;
+    utterance.volume = 1;
+    if (matchingVoice) utterance.voice = matchingVoice;
+    if (index === chunks.length - 1) {
+      utterance.onend = () => updateSpeakButtons();
+      utterance.onerror = () => updateSpeakButtons();
+    }
+    window.speechSynthesis.speak(utterance);
+  });
+  updateSpeakButtons();
+}
+
+function stopSpeaking() {
+  if (!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  updateSpeakButtons();
+}
+
+function updateSpeakButtons() {
+  const speakBtn = document.getElementById('speakBtn');
+  const stopBtn = document.getElementById('stopSpeakBtn');
+  const canSpeak = !!currentMed && ('speechSynthesis' in window);
+  const isSpeaking = canSpeak && window.speechSynthesis.speaking;
+
+  speakBtn.disabled = !canSpeak;
+  stopBtn.disabled = !isSpeaking;
+}
+
+function buildCategorySummary(items) {
+  const counts = new Map();
+  items.forEach(item => {
+    const category = item.category || inferCategory(item);
+    counts.set(category, (counts.get(category) || 0) + 1);
+  });
+
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, count]) => ({ name, count }));
+}
+
+function renderCategorySummary() {
+  const list = document.getElementById('categoryList');
+  const summary = document.getElementById('datasetSummary');
+
+  summary.textContent = `${medicines.length} medicines grouped into ${categorySummary.length} categories`;
+  list.innerHTML = categorySummary.map(item => `
+    <div class="category-row">
+      <div class="category-name">${escapeHtml(item.name)}</div>
+      <div class="category-count">${item.count}</div>
+    </div>
+  `).join('');
+}
+
+function openDatasetModal() {
+  if (!datasetLoaded) return;
+  document.getElementById('datasetModal').classList.add('open');
+}
+
+function closeDatasetModal(event) {
+  if (event && event.target && event.target.closest('.dataset-sheet')) return;
+  document.getElementById('datasetModal').classList.remove('open');
+}
+
+function pickPreferredVoice(voices, langCode) {
+  const normalizedLang = (langCode || 'en-IN').toLowerCase();
+  const langPrefix = normalizedLang.slice(0, 2);
+  const preferredNames = {
+    en: ['samantha', 'karen', 'moira', 'ava', 'zira', 'google uk english female', 'veena'],
+    hi: ['swara', 'lekha'],
+    ta: ['veena'],
+    te: ['veena'],
+    ml: ['veena'],
+    kn: ['veena'],
+    mr: ['veena'],
+    bn: ['veena']
+  };
+
+  const sameLanguage = voices.filter(voice => (voice.lang || '').toLowerCase().startsWith(langPrefix));
+  const namePrefs = preferredNames[langPrefix] || [];
+
+  for (const preferred of namePrefs) {
+    const exact = sameLanguage.find(voice => (voice.name || '').toLowerCase().includes(preferred));
+    if (exact) return exact;
+  }
+
+  const softerHints = ['female', 'woman', 'samantha', 'karen', 'moira', 'ava', 'veena', 'zira'];
+  const softer = sameLanguage.find(voice =>
+    softerHints.some(hint => (voice.name || '').toLowerCase().includes(hint))
+  );
+  if (softer) return softer;
+
+  return sameLanguage[0] || voices[0] || null;
+}
+
+function enrichMedicineRecord(med) {
+  return {
+    ...med,
+    precautions: resolvePrecautions(med),
+    category: med.category || inferCategory(med),
+    treatment_duration: med.treatment_duration || inferTreatmentDuration(med),
+    stop_when: med.stop_when || inferStopWhen(med),
+    doctor_consult: med.doctor_consult || inferDoctorAdvice(med)
+  };
+}
+
+function resolvePrecautions(med) {
+  const existing = cleanPrecautionText(med.precautions || '');
+  if (existing) return existing;
+
+  const text = `${med.medicine || ''} ${med.usage || ''} ${med.aliases || ''}`.toLowerCase();
+  if (text.includes('penicillin')) return 'Avoid if you have penicillin allergy. Consult a doctor before use.';
+  if ((med.category || '').includes('Antibiotic')) return 'Use only on doctor advice and complete the full prescribed course.';
+  if ((med.category || '').includes('Pain Relief')) return 'Do not exceed the recommended dose. Consult a doctor if symptoms continue.';
+  return 'Consult a doctor before taking this medicine.';
+}
+
+function cleanPrecautionText(text) {
+  const cleaned = String(text || '')
+    .replace(/\s+/g, ' ')
+    .replace(/\.(?=[A-Z])/g, '. ')
+    .trim();
+
+  if (!cleaned) return '';
+  if (/^(consult a doctor|information not available)$/i.test(cleaned)) return '';
+  return cleaned;
+}
+
+function inferCategory(med) {
+  const usage = (med.usage || '').toLowerCase();
+  const alias = (med.aliases || '').toLowerCase();
+  const text = `${med.medicine || ''} ${usage} ${alias}`.toLowerCase();
+
+  if (text.includes('infection') || text.includes('antibiotic') || text.includes('anti infectives') || text.includes('bacterial')) return 'Antibiotic';
+  if (text.includes('pain') || text.includes('fever') || text.includes('inflammation')) return 'Pain Relief / Fever';
+  if (text.includes('diabetes') || text.includes('blood sugar')) return 'Diabetes';
+  if (text.includes('acidity') || text.includes('ulcer') || text.includes('acid reflux') || text.includes('gerd')) return 'Acidity / Ulcer';
+  if (text.includes('allergy') || text.includes('allergic') || text.includes('sneezing')) return 'Allergy';
+  if (text.includes('cough') || text.includes('asthma') || text.includes('mucus') || text.includes('respiratory')) return 'Respiratory';
+  if (text.includes('hormone') || text.includes('steroid') || text.includes('thyroid') || text.includes('addison')) return 'Hormone / Steroid';
+  if (text.includes('heart') || text.includes('blood pressure') || text.includes('cardiac') || text.includes('angina')) return 'Heart / Blood Pressure';
+  if (text.includes('depression') || text.includes('anxiety') || text.includes('epilepsy') || text.includes('seizure') || text.includes('nerve')) return 'Mental Health / Nerves';
+  if (text.includes('skin') || text.includes('fungal') || text.includes('acne') || text.includes('eczema')) return 'Skin';
+  if (text.includes('vitamin') || text.includes('deficiency') || text.includes('supplement')) return 'Vitamin / Nutrition';
+  if (text.includes('vomiting') || text.includes('nausea') || text.includes('constipation') || text.includes('diarrhea') || text.includes('gastro')) return 'Gastro / Digestive';
+  return 'General Medicine';
+}
+
+function inferTreatmentDuration(med) {
+  const dosage = `${med.adult_dosage || ''} ${med.precautions || ''}`.toLowerCase();
+  const daysMatch = dosage.match(/(\d+\s*(?:-|to)?\s*\d*)\s*days?/);
+  const weeksMatch = dosage.match(/(\d+\s*(?:-|to)?\s*\d*)\s*weeks?/);
+  const monthsMatch = dosage.match(/(\d+\s*(?:-|to)?\s*\d*)\s*months?/);
+
+  if (daysMatch) return `Usually ${daysMatch[1].replace(/\s+/g, ' ')} days, or as prescribed.`;
+  if (weeksMatch) return `Usually ${weeksMatch[1].replace(/\s+/g, ' ')} weeks, or as prescribed.`;
+  if (monthsMatch) return `Usually ${monthsMatch[1].replace(/\s+/g, ' ')} months, or as prescribed.`;
+
+  if ((med.category || '').includes('Antibiotic')) return 'Usually a short prescribed course such as 3 to 7 days. Complete the full course.';
+  if ((med.category || '').includes('Pain Relief')) return 'Usually taken for a short time until pain or fever improves.';
+  if ((med.category || '').includes('Diabetes') || (med.category || '').includes('Heart') || (med.category || '').includes('Hormone')) return 'Often used long term, only as directed by a doctor.';
+  return 'Consult a doctor for the correct treatment duration.';
+}
+
+function inferStopWhen(med) {
+  const precautions = `${med.precautions || ''} ${med.adult_dosage || ''}`.toLowerCase();
+  if (precautions.includes('full course') || (med.category || '').includes('Antibiotic')) {
+    return 'Do not stop early. Stop only after completing the prescribed course or on doctor advice.';
+  }
+  if ((med.category || '').includes('Pain Relief')) {
+    return 'Stop when the pain or fever settles, unless your doctor has advised otherwise.';
+  }
+  if ((med.category || '').includes('Diabetes') || (med.category || '').includes('Heart') || (med.category || '').includes('Hormone')) {
+    return 'Do not stop suddenly. Stop or change it only after consulting your doctor.';
+  }
+  return 'Stop only as advised by a doctor, especially if symptoms continue or side effects appear.';
+}
+
+function inferDoctorAdvice(med) {
+  const category = med.category || '';
+  if (category.includes('Antibiotic')) return 'Consult a doctor before starting or stopping it. Use only for confirmed bacterial infection.';
+  if (category.includes('Pain Relief')) return 'Consult a doctor if pain or fever lasts, if the dose is needed often, or if you have liver, kidney, or stomach issues.';
+  if (category.includes('Heart')) return 'Consult a doctor before missing or stopping doses because these medicines can affect blood pressure or heart control.';
+  if (category.includes('Diabetes')) return 'Consult a doctor before changing the dose, because blood sugar may need monitoring.';
+  return 'Consult a doctor for the correct dose, duration, and stopping plan.';
+}
+
+function escapeHtml(str) {
+  return str
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ═══════════════════════════════
+   HELPERS
+═══════════════════════════════ */
+function showProgress(show, pct = 0, label = '') {
+  const wrap = document.getElementById('progressWrap');
+  wrap.style.display = show ? 'block' : 'none';
+  if (show) {
+    document.getElementById('progressFill').style.width  = pct + '%';
+    document.getElementById('progressLabel').textContent = label;
+  }
+}
+
+function setStatus(msg, type = '') {
+  const el = document.getElementById('statusBar');
+  el.className = 'status-bar' + (type ? ' ' + type : '');
+  el.textContent = msg;
+}
+
+function resetAll() {
+  fileInput.value = '';
+  selectedFiles = [];
+  document.getElementById('previewGrid').innerHTML = '';
+  document.getElementById('previewWrap').style.display = 'none';
+  document.getElementById('scanBtn').disabled = true;
+  document.getElementById('manualInput').value = '';
+  document.getElementById('searchStatus').textContent = '';
+  document.getElementById('searchStatus').className = 'status-bar';
+  showProgress(false);
+  setStatus('');
+  resetResult();
+}
+
+function ensureDatasetLoaded() {
+  if (datasetLoaded) return true;
+  setStatus('❌ Dataset could not be loaded automatically.', 'error');
+  return false;
+}
+
+function getSearchTerms(med) {
+  const rawTerms = [med.medicine || ''];
+  rawTerms.push(...getCommonAliases(med));
+
+  if (med.aliases) {
+    med.aliases.split(',').forEach(alias => {
+      rawTerms.push(alias);
+      alias.split('+').forEach(part => rawTerms.push(part));
+    });
+  }
+
+  const cleaned = rawTerms.flatMap(term => expandSearchTerm(term));
+  return [...new Set(cleaned)].filter(Boolean);
+}
+
+function matchesQuery(med, q) {
+  return getSearchTerms(med).some(term =>
+    term.includes(q) || q.includes(term.substring(0, Math.max(5, term.length - 2)))
+  );
+}
+
+function expandSearchTerm(term) {
+  const base = normalizeSearchText(term);
+  if (!base) return [];
+
+  const withoutStrength = normalizeSearchText(
+    String(term)
+      .replace(/\([^)]*\)/g, ' ')
+      .replace(/\b\d+(\.\d+)?\s*(mg|mcg|g|ml)\b/gi, ' ')
+      .replace(/\btablets?\b|\bcapsules?\b|\bsyrup\b|\binjection\b|\bdrops?\b/gi, ' ')
+  );
+
+  return [base, withoutStrength].filter(Boolean);
+}
+
+function normalizeSearchText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\b(ip|tab|tabs)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function getCommonAliases(med) {
+  const terms = [];
+  const searchable = [med.medicine || '', med.aliases || ''].join(' ').toLowerCase();
+
+  for (const [key, aliases] of Object.entries(COMMON_ALIASES)) {
+    if (searchable.includes(key) || aliases.some(alias => searchable.includes(alias))) {
+      terms.push(...aliases);
+    }
+  }
+
+  return terms;
+}
+</script>
+</body>
+</html>
