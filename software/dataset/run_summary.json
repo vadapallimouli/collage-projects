@@ -1,0 +1,14 @@
+{
+    "generated_at": "2026-08-06T22:14:28",
+    "random_seed": 42,
+    "sampling_frequency": 20000.0,
+    "signals_per_class": 1000,
+    "modulation_types": [
+        "AM",
+        "FM",
+        "DSB_SC",
+        "SSB"
+    ],
+    "total_signals_generated": 4000,
+    "failed_generation_attempts": 0
+}

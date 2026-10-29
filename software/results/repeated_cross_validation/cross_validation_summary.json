@@ -1,0 +1,130 @@
+{
+  "experiment": {
+    "name": "Repeated stratified cross-validation",
+    "generated_at": "2026-10-20T09:41:47",
+    "total_runtime_sec": 49.38,
+    "cv_splitter": "sklearn.model_selection.RepeatedStratifiedKFold",
+    "n_splits": 5,
+    "n_repeats": 3,
+    "random_state": 42,
+    "folds_per_model": 15,
+    "total_model_fold_records": 45,
+    "shared_folds_across_models": true,
+    "fold_assignment_sha256": "9b47318c2ab6a683b633ab45408256c839f00238a0de05dd13f76aa1464209c0",
+    "models": [
+      "Random Forest",
+      "SVM",
+      "XGBoost"
+    ],
+    "metric_units": "accuracy, precision_weighted, recall_weighted and f1_weighted are fractions in [0, 1] (not percentages); training_time_sec is seconds.",
+    "std_definition": "sample standard deviation (ddof=1) across all folds"
+  },
+  "dataset": {
+    "path": "dataset/features.csv",
+    "n_rows": 4000,
+    "n_features": 12,
+    "feature_columns": [
+      "RMS",
+      "Energy",
+      "FFT Peak",
+      "Centroid",
+      "Bandwidth",
+      "Entropy",
+      "Instantaneous Frequency",
+      "Zero Crossing Rate",
+      "Std",
+      "Kurtosis",
+      "Skewness",
+      "Crest Factor"
+    ],
+    "target_column": "Label",
+    "class_counts": {
+      "AM": 1000,
+      "FM": 1000,
+      "DSB_SC": 1000,
+      "SSB": 1000
+    }
+  },
+  "model_configurations": {
+    "Random Forest": "RandomForestClassifier(n_estimators=300, random_state=42, n_jobs=-1)",
+    "SVM": "Pipeline([('scaler', StandardScaler()), ('classifier', SVC(kernel='rbf', probability=True, random_state=42))]); scaler fit on each fold's training partition only",
+    "XGBoost": "XGBClassifier(n_estimators=300, max_depth=6, learning_rate=0.05, subsample=0.8, colsample_bytree=0.8, random_state=42, n_jobs=-1, eval_metric='mlogloss'); trained on LabelEncoder-encoded labels, predictions decoded before scoring"
+  },
+  "environment": {
+    "python": "3.10.11",
+    "platform": "Windows-10-10.0.26200-SP0",
+    "numpy": "1.26.4",
+    "pandas": "2.3.3",
+    "scikit-learn": "1.7.2",
+    "xgboost": "3.2.0"
+  },
+  "model_summary": {
+    "Random Forest": {
+      "n_folds": 15,
+      "accuracy": {
+        "mean": 0.834417,
+        "std": 0.015177
+      },
+      "precision_weighted": {
+        "mean": 0.83593,
+        "std": 0.014647
+      },
+      "recall_weighted": {
+        "mean": 0.834417,
+        "std": 0.015177
+      },
+      "f1_weighted": {
+        "mean": 0.834222,
+        "std": 0.015094
+      },
+      "training_time_sec_mean": 0.8259
+    },
+    "SVM": {
+      "n_folds": 15,
+      "accuracy": {
+        "mean": 0.7795,
+        "std": 0.019318
+      },
+      "precision_weighted": {
+        "mean": 0.786736,
+        "std": 0.019487
+      },
+      "recall_weighted": {
+        "mean": 0.7795,
+        "std": 0.019318
+      },
+      "f1_weighted": {
+        "mean": 0.778882,
+        "std": 0.019223
+      },
+      "training_time_sec_mean": 0.7848
+    },
+    "XGBoost": {
+      "n_folds": 15,
+      "accuracy": {
+        "mean": 0.83775,
+        "std": 0.017082
+      },
+      "precision_weighted": {
+        "mean": 0.839085,
+        "std": 0.016468
+      },
+      "recall_weighted": {
+        "mean": 0.83775,
+        "std": 0.017082
+      },
+      "f1_weighted": {
+        "mean": 0.837496,
+        "std": 0.017059
+      },
+      "training_time_sec_mean": 1.3907
+    }
+  },
+  "notes": [
+    "Cross-validation results estimate generalisation performance and are not directly interchangeable with the existing held-out 80:20 test results.",
+    "The held-out test score is not used as a cross-validation fold score.",
+    "All three models were evaluated on identical train/validation partitions.",
+    "Models are not ranked on any single fold; use mean and standard deviation across all folds. Repeats reuse the same samples, so folds are not fully independent and the standard deviation should be read descriptively.",
+    "Training times depend on hardware and system load."
+  ]
+}

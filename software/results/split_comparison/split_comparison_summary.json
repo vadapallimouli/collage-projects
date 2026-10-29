@@ -1,0 +1,361 @@
+{
+  "experiment": {
+    "name": "Train-test split comparison",
+    "generated_at": "2026-10-14T08:58:45",
+    "total_runtime_sec": 31.74,
+    "random_state": 42,
+    "stratified": true,
+    "splits": [
+      "70:30",
+      "75:25",
+      "80:20",
+      "85:15",
+      "90:10"
+    ],
+    "models": [
+      "Random Forest",
+      "SVM",
+      "XGBoost"
+    ]
+  },
+  "dataset": {
+    "path": "dataset/features.csv",
+    "n_rows": 4000,
+    "n_features": 12,
+    "feature_columns": [
+      "RMS",
+      "Energy",
+      "FFT Peak",
+      "Centroid",
+      "Bandwidth",
+      "Entropy",
+      "Instantaneous Frequency",
+      "Zero Crossing Rate",
+      "Std",
+      "Kurtosis",
+      "Skewness",
+      "Crest Factor"
+    ],
+    "target_column": "Label",
+    "class_counts": {
+      "AM": 1000,
+      "FM": 1000,
+      "DSB_SC": 1000,
+      "SSB": 1000
+    }
+  },
+  "model_configurations": {
+    "Random Forest": "RandomForestClassifier(n_estimators=300, random_state=42, n_jobs=-1)",
+    "SVM": "Pipeline([StandardScaler(), SVC(kernel='rbf', probability=True, random_state=42)])",
+    "XGBoost": "XGBClassifier(n_estimators=300, max_depth=6, learning_rate=0.05, subsample=0.8, colsample_bytree=0.8, random_state=42, n_jobs=-1, eval_metric='mlogloss'); trained on LabelEncoder-encoded labels"
+  },
+  "environment": {
+    "python": "3.10.11",
+    "platform": "Windows-10-10.0.26200-SP0",
+    "numpy": "1.26.4",
+    "pandas": "2.3.3",
+    "scikit-learn": "1.7.2",
+    "xgboost": "3.2.0"
+  },
+  "results": [
+    {
+      "split": "70:30",
+      "train_ratio": 0.7,
+      "test_ratio": 0.3,
+      "train_samples": 2800,
+      "test_samples": 1200,
+      "model": "Random Forest",
+      "accuracy": 0.818333,
+      "precision_weighted": 0.820509,
+      "recall_weighted": 0.818333,
+      "f1_weighted": 0.818006,
+      "training_time_sec": 0.8652
+    },
+    {
+      "split": "70:30",
+      "train_ratio": 0.7,
+      "test_ratio": 0.3,
+      "train_samples": 2800,
+      "test_samples": 1200,
+      "model": "SVM",
+      "accuracy": 0.768333,
+      "precision_weighted": 0.781141,
+      "recall_weighted": 0.768333,
+      "f1_weighted": 0.76577,
+      "training_time_sec": 0.7342
+    },
+    {
+      "split": "70:30",
+      "train_ratio": 0.7,
+      "test_ratio": 0.3,
+      "train_samples": 2800,
+      "test_samples": 1200,
+      "model": "XGBoost",
+      "accuracy": 0.84,
+      "precision_weighted": 0.841232,
+      "recall_weighted": 0.84,
+      "f1_weighted": 0.839843,
+      "training_time_sec": 3.8332
+    },
+    {
+      "split": "75:25",
+      "train_ratio": 0.75,
+      "test_ratio": 0.25,
+      "train_samples": 3000,
+      "test_samples": 1000,
+      "model": "Random Forest",
+      "accuracy": 0.832,
+      "precision_weighted": 0.833049,
+      "recall_weighted": 0.832,
+      "f1_weighted": 0.831468,
+      "training_time_sec": 0.8485
+    },
+    {
+      "split": "75:25",
+      "train_ratio": 0.75,
+      "test_ratio": 0.25,
+      "train_samples": 3000,
+      "test_samples": 1000,
+      "model": "SVM",
+      "accuracy": 0.773,
+      "precision_weighted": 0.783822,
+      "recall_weighted": 0.773,
+      "f1_weighted": 0.771023,
+      "training_time_sec": 0.8692
+    },
+    {
+      "split": "75:25",
+      "train_ratio": 0.75,
+      "test_ratio": 0.25,
+      "train_samples": 3000,
+      "test_samples": 1000,
+      "model": "XGBoost",
+      "accuracy": 0.838,
+      "precision_weighted": 0.839755,
+      "recall_weighted": 0.838,
+      "f1_weighted": 0.837802,
+      "training_time_sec": 2.1181
+    },
+    {
+      "split": "80:20",
+      "train_ratio": 0.8,
+      "test_ratio": 0.2,
+      "train_samples": 3200,
+      "test_samples": 800,
+      "model": "Random Forest",
+      "accuracy": 0.82375,
+      "precision_weighted": 0.824353,
+      "recall_weighted": 0.82375,
+      "f1_weighted": 0.823578,
+      "training_time_sec": 0.9091
+    },
+    {
+      "split": "80:20",
+      "train_ratio": 0.8,
+      "test_ratio": 0.2,
+      "train_samples": 3200,
+      "test_samples": 800,
+      "model": "SVM",
+      "accuracy": 0.76875,
+      "precision_weighted": 0.778757,
+      "recall_weighted": 0.76875,
+      "f1_weighted": 0.767276,
+      "training_time_sec": 0.9613
+    },
+    {
+      "split": "80:20",
+      "train_ratio": 0.8,
+      "test_ratio": 0.2,
+      "train_samples": 3200,
+      "test_samples": 800,
+      "model": "XGBoost",
+      "accuracy": 0.8425,
+      "precision_weighted": 0.844718,
+      "recall_weighted": 0.8425,
+      "f1_weighted": 0.84242,
+      "training_time_sec": 2.1313
+    },
+    {
+      "split": "85:15",
+      "train_ratio": 0.85,
+      "test_ratio": 0.15,
+      "train_samples": 3400,
+      "test_samples": 600,
+      "model": "Random Forest",
+      "accuracy": 0.833333,
+      "precision_weighted": 0.83412,
+      "recall_weighted": 0.833333,
+      "f1_weighted": 0.832708,
+      "training_time_sec": 0.9936
+    },
+    {
+      "split": "85:15",
+      "train_ratio": 0.85,
+      "test_ratio": 0.15,
+      "train_samples": 3400,
+      "test_samples": 600,
+      "model": "SVM",
+      "accuracy": 0.785,
+      "precision_weighted": 0.795486,
+      "recall_weighted": 0.785,
+      "f1_weighted": 0.783136,
+      "training_time_sec": 1.0482
+    },
+    {
+      "split": "85:15",
+      "train_ratio": 0.85,
+      "test_ratio": 0.15,
+      "train_samples": 3400,
+      "test_samples": 600,
+      "model": "XGBoost",
+      "accuracy": 0.836667,
+      "precision_weighted": 0.837554,
+      "recall_weighted": 0.836667,
+      "f1_weighted": 0.836348,
+      "training_time_sec": 9.3331
+    },
+    {
+      "split": "90:10",
+      "train_ratio": 0.9,
+      "test_ratio": 0.1,
+      "train_samples": 3600,
+      "test_samples": 400,
+      "model": "Random Forest",
+      "accuracy": 0.835,
+      "precision_weighted": 0.839573,
+      "recall_weighted": 0.835,
+      "f1_weighted": 0.83388,
+      "training_time_sec": 0.944
+    },
+    {
+      "split": "90:10",
+      "train_ratio": 0.9,
+      "test_ratio": 0.1,
+      "train_samples": 3600,
+      "test_samples": 400,
+      "model": "SVM",
+      "accuracy": 0.7875,
+      "precision_weighted": 0.799965,
+      "recall_weighted": 0.7875,
+      "f1_weighted": 0.785147,
+      "training_time_sec": 1.1036
+    },
+    {
+      "split": "90:10",
+      "train_ratio": 0.9,
+      "test_ratio": 0.1,
+      "train_samples": 3600,
+      "test_samples": 400,
+      "model": "XGBoost",
+      "accuracy": 0.845,
+      "precision_weighted": 0.846131,
+      "recall_weighted": 0.845,
+      "f1_weighted": 0.844414,
+      "training_time_sec": 2.4642
+    }
+  ],
+  "per_model_statistics_across_splits": {
+    "Random Forest": {
+      "accuracy": {
+        "mean": 0.828483,
+        "std": 0.006384,
+        "min": 0.818333,
+        "max": 0.835
+      },
+      "precision_weighted": {
+        "mean": 0.830321,
+        "std": 0.006919,
+        "min": 0.820509,
+        "max": 0.839573
+      },
+      "recall_weighted": {
+        "mean": 0.828483,
+        "std": 0.006384,
+        "min": 0.818333,
+        "max": 0.835
+      },
+      "f1_weighted": {
+        "mean": 0.827928,
+        "std": 0.006135,
+        "min": 0.818006,
+        "max": 0.83388
+      },
+      "training_time_sec": {
+        "mean": 0.91208,
+        "std": 0.052751,
+        "min": 0.8485,
+        "max": 0.9936
+      }
+    },
+    "SVM": {
+      "accuracy": {
+        "mean": 0.776517,
+        "std": 0.008152,
+        "min": 0.768333,
+        "max": 0.7875
+      },
+      "precision_weighted": {
+        "mean": 0.787834,
+        "std": 0.008355,
+        "min": 0.778757,
+        "max": 0.799965
+      },
+      "recall_weighted": {
+        "mean": 0.776517,
+        "std": 0.008152,
+        "min": 0.768333,
+        "max": 0.7875
+      },
+      "f1_weighted": {
+        "mean": 0.77447,
+        "std": 0.008105,
+        "min": 0.76577,
+        "max": 0.785147
+      },
+      "training_time_sec": {
+        "mean": 0.9433,
+        "std": 0.13133,
+        "min": 0.7342,
+        "max": 1.1036
+      }
+    },
+    "XGBoost": {
+      "accuracy": {
+        "mean": 0.840433,
+        "std": 0.003014,
+        "min": 0.836667,
+        "max": 0.845
+      },
+      "precision_weighted": {
+        "mean": 0.841878,
+        "std": 0.003155,
+        "min": 0.837554,
+        "max": 0.846131
+      },
+      "recall_weighted": {
+        "mean": 0.840433,
+        "std": 0.003014,
+        "min": 0.836667,
+        "max": 0.845
+      },
+      "f1_weighted": {
+        "mean": 0.840165,
+        "std": 0.002946,
+        "min": 0.836348,
+        "max": 0.844414
+      },
+      "training_time_sec": {
+        "mean": 3.97598,
+        "std": 2.751696,
+        "min": 2.1181,
+        "max": 9.3331
+      }
+    }
+  },
+  "notes": [
+    "Each split uses a different held-out test set, so test sets of different sizes are not identical and metrics are not directly paired comparisons; smaller test sets give noisier estimates.",
+    "Within a split, all three models share the exact same train/test partition.",
+    "All results are reported; no split was selected as 'best' from accuracy alone.",
+    "Training times depend on hardware and system load."
+  ]
+}

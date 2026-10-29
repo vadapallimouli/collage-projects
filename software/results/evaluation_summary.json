@@ -1,0 +1,313 @@
+{
+    "dataset": {
+        "path": "dataset\\features.csv",
+        "total_samples": 4000
+    },
+    "test_samples": 800,
+    "feature_names": [
+        "RMS",
+        "Energy",
+        "FFT Peak",
+        "Centroid",
+        "Bandwidth",
+        "Entropy",
+        "Instantaneous Frequency",
+        "Zero Crossing Rate",
+        "Std",
+        "Kurtosis",
+        "Skewness",
+        "Crest Factor"
+    ],
+    "class_names": [
+        "AM",
+        "FM",
+        "DSB_SC",
+        "SSB"
+    ],
+    "split": {
+        "test_size": 0.2,
+        "random_state": 42,
+        "stratified": true
+    },
+    "models": {
+        "Random Forest": {
+            "metrics": {
+                "accuracy": 0.82375,
+                "precision": 0.824353262650107,
+                "recall": 0.82375,
+                "f1": 0.8235783376024363
+            },
+            "classification_report": {
+                "AM": {
+                    "precision": 0.9144385026737968,
+                    "recall": 0.855,
+                    "f1-score": 0.8837209302325582,
+                    "support": 200.0
+                },
+                "FM": {
+                    "precision": 0.751269035532995,
+                    "recall": 0.74,
+                    "f1-score": 0.7455919395465995,
+                    "support": 200.0
+                },
+                "DSB_SC": {
+                    "precision": 0.8915094339622641,
+                    "recall": 0.945,
+                    "f1-score": 0.9174757281553398,
+                    "support": 200.0
+                },
+                "SSB": {
+                    "precision": 0.7401960784313726,
+                    "recall": 0.755,
+                    "f1-score": 0.7475247524752475,
+                    "support": 200.0
+                },
+                "accuracy": 0.82375,
+                "macro avg": {
+                    "precision": 0.8243532626501071,
+                    "recall": 0.82375,
+                    "f1-score": 0.8235783376024364,
+                    "support": 800.0
+                },
+                "weighted avg": {
+                    "precision": 0.824353262650107,
+                    "recall": 0.82375,
+                    "f1-score": 0.8235783376024364,
+                    "support": 800.0
+                }
+            },
+            "confusion_matrix": {
+                "labels": [
+                    "AM",
+                    "FM",
+                    "DSB_SC",
+                    "SSB"
+                ],
+                "matrix": [
+                    [
+                        171,
+                        2,
+                        23,
+                        4
+                    ],
+                    [
+                        3,
+                        148,
+                        0,
+                        49
+                    ],
+                    [
+                        11,
+                        0,
+                        189,
+                        0
+                    ],
+                    [
+                        2,
+                        47,
+                        0,
+                        151
+                    ]
+                ]
+            },
+            "roc_auc": {
+                "AM": 0.9827125,
+                "FM": 0.9500416666666667,
+                "DSB_SC": 0.99115,
+                "SSB": 0.9498791666666667,
+                "macro_auc": 0.9684458333333333
+            }
+        },
+        "SVM": {
+            "metrics": {
+                "accuracy": 0.76875,
+                "precision": 0.7787566371797898,
+                "recall": 0.76875,
+                "f1": 0.7672756738136814
+            },
+            "classification_report": {
+                "AM": {
+                    "precision": 0.910958904109589,
+                    "recall": 0.665,
+                    "f1-score": 0.7687861271676301,
+                    "support": 200.0
+                },
+                "FM": {
+                    "precision": 0.7,
+                    "recall": 0.77,
+                    "f1-score": 0.7333333333333333,
+                    "support": 200.0
+                },
+                "DSB_SC": {
+                    "precision": 0.8025751072961373,
+                    "recall": 0.935,
+                    "f1-score": 0.8637413394919169,
+                    "support": 200.0
+                },
+                "SSB": {
+                    "precision": 0.7014925373134329,
+                    "recall": 0.705,
+                    "f1-score": 0.7032418952618454,
+                    "support": 200.0
+                },
+                "accuracy": 0.76875,
+                "macro avg": {
+                    "precision": 0.7787566371797898,
+                    "recall": 0.76875,
+                    "f1-score": 0.7672756738136814,
+                    "support": 800.0
+                },
+                "weighted avg": {
+                    "precision": 0.7787566371797898,
+                    "recall": 0.76875,
+                    "f1-score": 0.7672756738136814,
+                    "support": 800.0
+                }
+            },
+            "confusion_matrix": {
+                "labels": [
+                    "AM",
+                    "FM",
+                    "DSB_SC",
+                    "SSB"
+                ],
+                "matrix": [
+                    [
+                        133,
+                        7,
+                        46,
+                        14
+                    ],
+                    [
+                        0,
+                        154,
+                        0,
+                        46
+                    ],
+                    [
+                        13,
+                        0,
+                        187,
+                        0
+                    ],
+                    [
+                        0,
+                        59,
+                        0,
+                        141
+                    ]
+                ]
+            },
+            "roc_auc": {
+                "AM": 0.9654999999999999,
+                "FM": 0.9428416666666666,
+                "DSB_SC": 0.9799333333333332,
+                "SSB": 0.9390583333333333,
+                "macro_auc": 0.9568333333333332
+            }
+        },
+        "XGBoost": {
+            "metrics": {
+                "accuracy": 0.8425,
+                "precision": 0.844717535429687,
+                "recall": 0.8425,
+                "f1": 0.842419794560995
+            },
+            "classification_report": {
+                "AM": {
+                    "precision": 0.946236559139785,
+                    "recall": 0.88,
+                    "f1-score": 0.9119170984455959,
+                    "support": 200.0
+                },
+                "FM": {
+                    "precision": 0.782608695652174,
+                    "recall": 0.72,
+                    "f1-score": 0.75,
+                    "support": 200.0
+                },
+                "DSB_SC": {
+                    "precision": 0.919431279620853,
+                    "recall": 0.97,
+                    "f1-score": 0.9440389294403893,
+                    "support": 200.0
+                },
+                "SSB": {
+                    "precision": 0.730593607305936,
+                    "recall": 0.8,
+                    "f1-score": 0.7637231503579952,
+                    "support": 200.0
+                },
+                "accuracy": 0.8425,
+                "macro avg": {
+                    "precision": 0.844717535429687,
+                    "recall": 0.8425,
+                    "f1-score": 0.842419794560995,
+                    "support": 800.0
+                },
+                "weighted avg": {
+                    "precision": 0.844717535429687,
+                    "recall": 0.8425,
+                    "f1-score": 0.842419794560995,
+                    "support": 800.0
+                }
+            },
+            "confusion_matrix": {
+                "labels": [
+                    "AM",
+                    "FM",
+                    "DSB_SC",
+                    "SSB"
+                ],
+                "matrix": [
+                    [
+                        176,
+                        1,
+                        17,
+                        6
+                    ],
+                    [
+                        3,
+                        144,
+                        0,
+                        53
+                    ],
+                    [
+                        6,
+                        0,
+                        194,
+                        0
+                    ],
+                    [
+                        1,
+                        39,
+                        0,
+                        160
+                    ]
+                ]
+            },
+            "roc_auc": {
+                "AM": 0.9890666666666666,
+                "FM": 0.95465,
+                "DSB_SC": 0.9945333333333334,
+                "SSB": 0.9532333333333334,
+                "macro_auc": 0.9728708333333334
+            }
+        }
+    },
+    "best_model": {
+        "name": "XGBoost",
+        "selection_criteria": {
+            "primary": "weighted_f1",
+            "tie_breaker": "accuracy",
+            "evaluated_on": "test_set"
+        },
+        "training_metrics": {
+            "accuracy": 0.8425,
+            "precision": 0.844717535429687,
+            "recall": 0.8425,
+            "f1": 0.842419794560995,
+            "training_time_seconds": 2.4181468000169843
+        }
+    }
+}

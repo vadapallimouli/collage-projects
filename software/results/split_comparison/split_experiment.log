@@ -1,0 +1,52 @@
+2026-10-14 08:58:13 | INFO     | Train-test split comparison started
+2026-10-14 08:58:13 | INFO     | Project root: C:\Users\sharm\OneDrive\Desktop\s3\software
+2026-10-14 08:58:13 | INFO     | Versions: python=3.10.11 sklearn=1.7.2 xgboost=3.2.0 pandas=2.3.3 numpy=1.26.4
+2026-10-14 08:58:13 | INFO     | Loaded dataset: dataset\features.csv  shape=(4000, 13)
+2026-10-14 08:58:13 | INFO     | Feature columns (12): ['RMS', 'Energy', 'FFT Peak', 'Centroid', 'Bandwidth', 'Entropy', 'Instantaneous Frequency', 'Zero Crossing Rate', 'Std', 'Kurtosis', 'Skewness', 'Crest Factor']
+2026-10-14 08:58:13 | INFO     | Class distribution: {'AM': 1000, 'FM': 1000, 'DSB_SC': 1000, 'SSB': 1000}
+2026-10-14 08:58:13 | INFO     | ======================================================================
+2026-10-14 08:58:13 | INFO     | Split 70:30  |  train=2800  test=1200  |  test class counts={'SSB': 300, 'DSB_SC': 300, 'FM': 300, 'AM': 300}
+2026-10-14 08:58:13 | INFO     | Training Random Forest on split 70:30 ...
+2026-10-14 08:58:14 | INFO     | 70:30 | Random Forest | acc=0.8183 prec=0.8205 rec=0.8183 f1=0.8180 time=0.87s
+2026-10-14 08:58:14 | INFO     | Training SVM on split 70:30 ...
+2026-10-14 08:58:15 | INFO     | 70:30 | SVM | acc=0.7683 prec=0.7811 rec=0.7683 f1=0.7658 time=0.73s
+2026-10-14 08:58:15 | INFO     | Training XGBoost on split 70:30 ...
+2026-10-14 08:58:19 | INFO     | 70:30 | XGBoost | acc=0.8400 prec=0.8412 rec=0.8400 f1=0.8398 time=3.83s
+2026-10-14 08:58:19 | INFO     | ======================================================================
+2026-10-14 08:58:19 | INFO     | Split 75:25  |  train=3000  test=1000  |  test class counts={'DSB_SC': 250, 'AM': 250, 'FM': 250, 'SSB': 250}
+2026-10-14 08:58:19 | INFO     | Training Random Forest on split 75:25 ...
+2026-10-14 08:58:20 | INFO     | 75:25 | Random Forest | acc=0.8320 prec=0.8330 rec=0.8320 f1=0.8315 time=0.85s
+2026-10-14 08:58:20 | INFO     | Training SVM on split 75:25 ...
+2026-10-14 08:58:21 | INFO     | 75:25 | SVM | acc=0.7730 prec=0.7838 rec=0.7730 f1=0.7710 time=0.87s
+2026-10-14 08:58:21 | INFO     | Training XGBoost on split 75:25 ...
+2026-10-14 08:58:23 | INFO     | 75:25 | XGBoost | acc=0.8380 prec=0.8398 rec=0.8380 f1=0.8378 time=2.12s
+2026-10-14 08:58:23 | INFO     | ======================================================================
+2026-10-14 08:58:23 | INFO     | Split 80:20  |  train=3200  test=800  |  test class counts={'AM': 200, 'DSB_SC': 200, 'SSB': 200, 'FM': 200}
+2026-10-14 08:58:23 | INFO     | Training Random Forest on split 80:20 ...
+2026-10-14 08:58:24 | INFO     | 80:20 | Random Forest | acc=0.8237 prec=0.8244 rec=0.8237 f1=0.8236 time=0.91s
+2026-10-14 08:58:24 | INFO     | Training SVM on split 80:20 ...
+2026-10-14 08:58:25 | INFO     | 80:20 | SVM | acc=0.7688 prec=0.7788 rec=0.7688 f1=0.7673 time=0.96s
+2026-10-14 08:58:25 | INFO     | Training XGBoost on split 80:20 ...
+2026-10-14 08:58:28 | INFO     | 80:20 | XGBoost | acc=0.8425 prec=0.8447 rec=0.8425 f1=0.8424 time=2.13s
+2026-10-14 08:58:28 | INFO     | ======================================================================
+2026-10-14 08:58:28 | INFO     | Split 85:15  |  train=3400  test=600  |  test class counts={'AM': 150, 'SSB': 150, 'DSB_SC': 150, 'FM': 150}
+2026-10-14 08:58:28 | INFO     | Training Random Forest on split 85:15 ...
+2026-10-14 08:58:29 | INFO     | 85:15 | Random Forest | acc=0.8333 prec=0.8341 rec=0.8333 f1=0.8327 time=0.99s
+2026-10-14 08:58:29 | INFO     | Training SVM on split 85:15 ...
+2026-10-14 08:58:30 | INFO     | 85:15 | SVM | acc=0.7850 prec=0.7955 rec=0.7850 f1=0.7831 time=1.05s
+2026-10-14 08:58:30 | INFO     | Training XGBoost on split 85:15 ...
+2026-10-14 08:58:39 | INFO     | 85:15 | XGBoost | acc=0.8367 prec=0.8376 rec=0.8367 f1=0.8363 time=9.33s
+2026-10-14 08:58:39 | INFO     | ======================================================================
+2026-10-14 08:58:39 | INFO     | Split 90:10  |  train=3600  test=400  |  test class counts={'DSB_SC': 100, 'SSB': 100, 'AM': 100, 'FM': 100}
+2026-10-14 08:58:39 | INFO     | Training Random Forest on split 90:10 ...
+2026-10-14 08:58:40 | INFO     | 90:10 | Random Forest | acc=0.8350 prec=0.8396 rec=0.8350 f1=0.8339 time=0.94s
+2026-10-14 08:58:40 | INFO     | Training SVM on split 90:10 ...
+2026-10-14 08:58:41 | INFO     | 90:10 | SVM | acc=0.7875 prec=0.8000 rec=0.7875 f1=0.7851 time=1.10s
+2026-10-14 08:58:41 | INFO     | Training XGBoost on split 90:10 ...
+2026-10-14 08:58:44 | INFO     | 90:10 | XGBoost | acc=0.8450 prec=0.8461 rec=0.8450 f1=0.8444 time=2.46s
+2026-10-14 08:58:44 | INFO     | Saved results\split_comparison\split_comparison.csv
+2026-10-14 08:58:44 | INFO     | Saved results\split_comparison\accuracy_comparison.png
+2026-10-14 08:58:45 | INFO     | Saved results\split_comparison\f1_comparison.png
+2026-10-14 08:58:45 | INFO     | Saved results\split_comparison\training_time_comparison.png
+2026-10-14 08:58:45 | INFO     | Saved results\split_comparison\split_comparison_summary.json
+2026-10-14 08:58:45 | INFO     | Experiment completed in 31.7 s

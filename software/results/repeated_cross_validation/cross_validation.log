@@ -1,0 +1,66 @@
+2026-10-20 09:40:58 | INFO     | Repeated cross-validation started
+2026-10-20 09:40:58 | INFO     | Project root: C:\Users\sharm\OneDrive\Desktop\s3\software
+2026-10-20 09:40:58 | INFO     | Versions: python=3.10.11 sklearn=1.7.2 xgboost=3.2.0 pandas=2.3.3 numpy=1.26.4
+2026-10-20 09:40:58 | INFO     | Loaded dataset: dataset/features.csv shape=(4000, 13)
+2026-10-20 09:40:58 | INFO     | Feature columns (12): ['RMS', 'Energy', 'FFT Peak', 'Centroid', 'Bandwidth', 'Entropy', 'Instantaneous Frequency', 'Zero Crossing Rate', 'Std', 'Kurtosis', 'Skewness', 'Crest Factor']
+2026-10-20 09:40:58 | INFO     | Class distribution: {'AM': 1000, 'FM': 1000, 'DSB_SC': 1000, 'SSB': 1000}
+2026-10-20 09:40:58 | INFO     | Dataset validation passed (all feature values finite and numeric).
+2026-10-20 09:40:58 | INFO     | Label encoding (used for XGBoost): ['AM', 'DSB_SC', 'FM', 'SSB']
+2026-10-20 09:40:58 | INFO     | Generated 15 shared folds (RepeatedStratifiedKFold n_splits=5 n_repeats=3 random_state=42). Fold fingerprint: 9b47318c2ab6a683
+2026-10-20 09:40:58 | INFO     | ======================================================================
+2026-10-20 09:40:58 | INFO     | Cross-validating Random Forest
+2026-10-20 09:40:59 | INFO     | Random Forest | repeat 1 fold 1 | train=3200 val=800 | acc=0.8475 prec=0.8479 rec=0.8475 f1=0.8475 | 0.95s
+2026-10-20 09:41:00 | INFO     | Random Forest | repeat 1 fold 2 | train=3200 val=800 | acc=0.8475 prec=0.8510 rec=0.8475 f1=0.8471 | 0.98s
+2026-10-20 09:41:01 | INFO     | Random Forest | repeat 1 fold 3 | train=3200 val=800 | acc=0.8200 prec=0.8224 rec=0.8200 f1=0.8199 | 0.88s
+2026-10-20 09:41:02 | INFO     | Random Forest | repeat 1 fold 4 | train=3200 val=800 | acc=0.8438 prec=0.8439 rec=0.8438 f1=0.8438 | 0.75s
+2026-10-20 09:41:03 | INFO     | Random Forest | repeat 1 fold 5 | train=3200 val=800 | acc=0.8213 prec=0.8228 rec=0.8213 f1=0.8211 | 0.75s
+2026-10-20 09:41:04 | INFO     | Random Forest | repeat 2 fold 1 | train=3200 val=800 | acc=0.8413 prec=0.8427 rec=0.8413 f1=0.8415 | 0.76s
+2026-10-20 09:41:05 | INFO     | Random Forest | repeat 2 fold 2 | train=3200 val=800 | acc=0.8512 prec=0.8524 rec=0.8512 f1=0.8509 | 0.86s
+2026-10-20 09:41:06 | INFO     | Random Forest | repeat 2 fold 3 | train=3200 val=800 | acc=0.8163 prec=0.8183 rec=0.8163 f1=0.8160 | 0.95s
+2026-10-20 09:41:07 | INFO     | Random Forest | repeat 2 fold 4 | train=3200 val=800 | acc=0.8213 prec=0.8224 rec=0.8213 f1=0.8209 | 0.83s
+2026-10-20 09:41:08 | INFO     | Random Forest | repeat 2 fold 5 | train=3200 val=800 | acc=0.8538 prec=0.8547 rec=0.8538 f1=0.8533 | 0.76s
+2026-10-20 09:41:09 | INFO     | Random Forest | repeat 3 fold 1 | train=3200 val=800 | acc=0.8588 prec=0.8584 rec=0.8588 f1=0.8582 | 0.87s
+2026-10-20 09:41:10 | INFO     | Random Forest | repeat 3 fold 2 | train=3200 val=800 | acc=0.8213 prec=0.8237 rec=0.8213 f1=0.8209 | 0.78s
+2026-10-20 09:41:10 | INFO     | Random Forest | repeat 3 fold 3 | train=3200 val=800 | acc=0.8287 prec=0.8309 rec=0.8287 f1=0.8284 | 0.76s
+2026-10-20 09:41:11 | INFO     | Random Forest | repeat 3 fold 4 | train=3200 val=800 | acc=0.8287 prec=0.8301 rec=0.8287 f1=0.8286 | 0.74s
+2026-10-20 09:41:12 | INFO     | Random Forest | repeat 3 fold 5 | train=3200 val=800 | acc=0.8150 prec=0.8175 rec=0.8150 f1=0.8152 | 0.79s
+2026-10-20 09:41:12 | INFO     | ======================================================================
+2026-10-20 09:41:12 | INFO     | Cross-validating SVM
+2026-10-20 09:41:13 | INFO     | SVM | repeat 1 fold 1 | train=3200 val=800 | acc=0.8113 prec=0.8163 rec=0.8113 f1=0.8110 | 0.77s
+2026-10-20 09:41:14 | INFO     | SVM | repeat 1 fold 2 | train=3200 val=800 | acc=0.8050 prec=0.8141 rec=0.8050 f1=0.8034 | 0.76s
+2026-10-20 09:41:15 | INFO     | SVM | repeat 1 fold 3 | train=3200 val=800 | acc=0.7625 prec=0.7735 rec=0.7625 f1=0.7620 | 0.75s
+2026-10-20 09:41:16 | INFO     | SVM | repeat 1 fold 4 | train=3200 val=800 | acc=0.7738 prec=0.7792 rec=0.7738 f1=0.7731 | 0.74s
+2026-10-20 09:41:16 | INFO     | SVM | repeat 1 fold 5 | train=3200 val=800 | acc=0.7612 prec=0.7665 rec=0.7612 f1=0.7614 | 0.73s
+2026-10-20 09:41:17 | INFO     | SVM | repeat 2 fold 1 | train=3200 val=800 | acc=0.7688 prec=0.7755 rec=0.7688 f1=0.7680 | 0.73s
+2026-10-20 09:41:18 | INFO     | SVM | repeat 2 fold 2 | train=3200 val=800 | acc=0.7887 prec=0.7968 rec=0.7887 f1=0.7876 | 0.91s
+2026-10-20 09:41:19 | INFO     | SVM | repeat 2 fold 3 | train=3200 val=800 | acc=0.7600 prec=0.7645 rec=0.7600 f1=0.7593 | 0.75s
+2026-10-20 09:41:20 | INFO     | SVM | repeat 2 fold 4 | train=3200 val=800 | acc=0.7863 prec=0.7928 rec=0.7863 f1=0.7872 | 0.95s
+2026-10-20 09:41:21 | INFO     | SVM | repeat 2 fold 5 | train=3200 val=800 | acc=0.7863 prec=0.7958 rec=0.7863 f1=0.7848 | 0.78s
+2026-10-20 09:41:22 | INFO     | SVM | repeat 3 fold 1 | train=3200 val=800 | acc=0.8113 prec=0.8196 rec=0.8113 f1=0.8102 | 0.79s
+2026-10-20 09:41:23 | INFO     | SVM | repeat 3 fold 2 | train=3200 val=800 | acc=0.7850 prec=0.7926 rec=0.7850 f1=0.7845 | 0.76s
+2026-10-20 09:41:24 | INFO     | SVM | repeat 3 fold 3 | train=3200 val=800 | acc=0.7662 prec=0.7717 rec=0.7662 f1=0.7658 | 0.87s
+2026-10-20 09:41:25 | INFO     | SVM | repeat 3 fold 4 | train=3200 val=800 | acc=0.7788 prec=0.7848 rec=0.7788 f1=0.7782 | 0.74s
+2026-10-20 09:41:26 | INFO     | SVM | repeat 3 fold 5 | train=3200 val=800 | acc=0.7475 prec=0.7573 rec=0.7475 f1=0.7466 | 0.74s
+2026-10-20 09:41:26 | INFO     | ======================================================================
+2026-10-20 09:41:26 | INFO     | Cross-validating XGBoost
+2026-10-20 09:41:29 | INFO     | XGBoost | repeat 1 fold 1 | train=3200 val=800 | acc=0.8638 prec=0.8645 rec=0.8638 f1=0.8636 | 3.06s
+2026-10-20 09:41:30 | INFO     | XGBoost | repeat 1 fold 2 | train=3200 val=800 | acc=0.8488 prec=0.8492 rec=0.8488 f1=0.8485 | 1.30s
+2026-10-20 09:41:31 | INFO     | XGBoost | repeat 1 fold 3 | train=3200 val=800 | acc=0.8300 prec=0.8319 rec=0.8300 f1=0.8298 | 1.28s
+2026-10-20 09:41:33 | INFO     | XGBoost | repeat 1 fold 4 | train=3200 val=800 | acc=0.8525 prec=0.8524 rec=0.8525 f1=0.8521 | 1.26s
+2026-10-20 09:41:34 | INFO     | XGBoost | repeat 1 fold 5 | train=3200 val=800 | acc=0.8187 prec=0.8197 rec=0.8187 f1=0.8183 | 1.28s
+2026-10-20 09:41:35 | INFO     | XGBoost | repeat 2 fold 1 | train=3200 val=800 | acc=0.8350 prec=0.8367 rec=0.8350 f1=0.8354 | 1.26s
+2026-10-20 09:41:37 | INFO     | XGBoost | repeat 2 fold 2 | train=3200 val=800 | acc=0.8538 prec=0.8539 rec=0.8538 f1=0.8529 | 1.29s
+2026-10-20 09:41:38 | INFO     | XGBoost | repeat 2 fold 3 | train=3200 val=800 | acc=0.8037 prec=0.8067 rec=0.8037 f1=0.8033 | 1.32s
+2026-10-20 09:41:39 | INFO     | XGBoost | repeat 2 fold 4 | train=3200 val=800 | acc=0.8237 prec=0.8254 rec=0.8237 f1=0.8232 | 1.26s
+2026-10-20 09:41:40 | INFO     | XGBoost | repeat 2 fold 5 | train=3200 val=800 | acc=0.8538 prec=0.8552 rec=0.8538 f1=0.8533 | 1.24s
+2026-10-20 09:41:42 | INFO     | XGBoost | repeat 3 fold 1 | train=3200 val=800 | acc=0.8600 prec=0.8612 rec=0.8600 f1=0.8598 | 1.25s
+2026-10-20 09:41:43 | INFO     | XGBoost | repeat 3 fold 2 | train=3200 val=800 | acc=0.8363 prec=0.8368 rec=0.8363 f1=0.8355 | 1.27s
+2026-10-20 09:41:44 | INFO     | XGBoost | repeat 3 fold 3 | train=3200 val=800 | acc=0.8263 prec=0.8284 rec=0.8263 f1=0.8261 | 1.26s
+2026-10-20 09:41:46 | INFO     | XGBoost | repeat 3 fold 4 | train=3200 val=800 | acc=0.8337 prec=0.8352 rec=0.8337 f1=0.8339 | 1.24s
+2026-10-20 09:41:47 | INFO     | XGBoost | repeat 3 fold 5 | train=3200 val=800 | acc=0.8263 prec=0.8290 rec=0.8263 f1=0.8266 | 1.28s
+2026-10-20 09:41:47 | INFO     | Saved results/repeated_cross_validation/cross_validation_fold_results.csv
+2026-10-20 09:41:47 | INFO     | Saved results/repeated_cross_validation/cross_validation_summary.csv
+2026-10-20 09:41:47 | INFO     | Saved results/repeated_cross_validation/cross_validation_accuracy.png
+2026-10-20 09:41:47 | INFO     | Saved results/repeated_cross_validation/cross_validation_f1.png
+2026-10-20 09:41:47 | INFO     | Saved results/repeated_cross_validation/cross_validation_summary.json
+2026-10-20 09:41:47 | INFO     | Experiment completed in 49.4 s

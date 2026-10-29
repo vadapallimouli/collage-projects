@@ -1,0 +1,4 @@
+model,n_folds,accuracy_mean,accuracy_std,precision_weighted_mean,precision_weighted_std,recall_weighted_mean,recall_weighted_std,f1_weighted_mean,f1_weighted_std,training_time_sec_mean
+Random Forest,15,0.834417,0.015177,0.83593,0.014647,0.834417,0.015177,0.834222,0.015094,0.8259
+SVM,15,0.7795,0.019318,0.786736,0.019487,0.7795,0.019318,0.778882,0.019223,0.7848
+XGBoost,15,0.83775,0.017082,0.839085,0.016468,0.83775,0.017082,0.837496,0.017059,1.3907

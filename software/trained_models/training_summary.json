@@ -1,0 +1,69 @@
+{
+    "dataset": {
+        "path": "dataset\\features.csv",
+        "samples": 4000,
+        "features": 12
+    },
+    "feature_columns": [
+        "RMS",
+        "Energy",
+        "FFT Peak",
+        "Centroid",
+        "Bandwidth",
+        "Entropy",
+        "Instantaneous Frequency",
+        "Zero Crossing Rate",
+        "Std",
+        "Kurtosis",
+        "Skewness",
+        "Crest Factor"
+    ],
+    "class_names": [
+        "AM",
+        "DSB_SC",
+        "FM",
+        "SSB"
+    ],
+    "split": {
+        "test_size": 0.2,
+        "random_state": 42,
+        "train_samples": 3200,
+        "test_samples": 800
+    },
+    "models": {
+        "Random Forest": {
+            "accuracy": 0.82375,
+            "precision": 0.824353262650107,
+            "recall": 0.82375,
+            "f1": 0.8235783376024363,
+            "training_time_seconds": 0.9354968999978155
+        },
+        "SVM": {
+            "accuracy": 0.76875,
+            "precision": 0.7787566371797898,
+            "recall": 0.76875,
+            "f1": 0.7672756738136814,
+            "training_time_seconds": 0.8507696999877226
+        },
+        "XGBoost": {
+            "accuracy": 0.8425,
+            "precision": 0.844717535429687,
+            "recall": 0.8425,
+            "f1": 0.842419794560995,
+            "training_time_seconds": 2.4181468000169843
+        }
+    },
+    "best_model": "XGBoost",
+    "best_model_selection_criteria": {
+        "primary": "weighted_f1",
+        "tie_breaker": "accuracy",
+        "evaluated_on": "test_set"
+    },
+    "artifacts": {
+        "random_forest": "random_forest.joblib",
+        "svm": "svm.joblib",
+        "xgboost": "xgboost.joblib",
+        "label_encoder": "label_encoder.joblib",
+        "best_model": "best_model.joblib"
+    }
+}

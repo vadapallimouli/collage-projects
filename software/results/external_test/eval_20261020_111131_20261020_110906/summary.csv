@@ -1,0 +1,2 @@
+run_id,model,total,successful,failed,accuracy,precision_weighted,recall_weighted,f1_weighted,accuracy_failures_as_incorrect,evaluated_at
+20261020_110906,XGBoost,1000,1000,0,0.839,0.8398858574726462,0.839,0.8386946407464907,0.839,2026-10-20T11:11:31
