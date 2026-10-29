@@ -1,0 +1,1449 @@
+"""
+FINAL END-TO-END INTELLIGENT ROBOT MOTION PLANNING DEMO
+
+Pipeline:
+
+MπNets problem
+    ↓
+Environment + obstacles
+    ↓
+Start configuration
+    ↓
+Goal configuration
+    ↓
+Generate many candidate trajectories
+    ↓
+XGBoost failure prediction
+    ↓
+Local ML explanation
+    ↓
+Physical validation
+    ↓
+Recoverability analysis
+    ↓
+Final trajectory selection
+    ↓
+PyBullet visualization
+    ↓
+Robot animation
+"""
+
+import argparse
+import json
+import os
+import sys
+import time
+import pickle
+
+import numpy as np
+import pybullet as p
+import pybullet_data
+
+
+# =====================================================================
+# PROJECT PATH
+# =====================================================================
+
+PROJECT_ROOT = os.path.abspath(
+    os.path.join(
+        os.path.dirname(__file__),
+        "..",
+    )
+)
+
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(
+        0,
+        PROJECT_ROOT,
+    )
+
+
+# =====================================================================
+# PROJECT IMPORTS
+# =====================================================================
+
+from robot.panda_robot import PandaRobot
+
+from environment.environment import Environment
+
+from analysis.collision_checker import CollisionChecker
+
+from analysis.clearance_analyzer import ClearanceAnalyzer
+
+from analysis.feature_extractor import (
+    TrajectoryFeatureExtractor,
+)
+
+from analysis.recoverability_analyzer import (
+    RecoverabilityAnalyzer,
+)
+
+from analysis.intelligent_planner import (
+    IntelligentMotionPlanner,
+)
+
+from planning.trajectory_generator import (
+    TrajectoryGenerator,
+)
+
+from planning.goal_configuration import (
+    GoalConfigurationGenerator,
+)
+
+from planning.obstacle_aware_planner import (
+    ObstacleAwarePlanner,
+)
+
+from prediction.failure_predictor import (
+    FailurePredictor,
+)
+
+from visualization.robot_visualizer import (
+    RobotVisualizer,
+)
+
+
+# =====================================================================
+# CONFIGURATION
+# =====================================================================
+
+DATASET_PATH = os.path.join(
+    PROJECT_ROOT,
+    "data",
+    "mpinets",
+    "both_solvable_problems.pkl",
+)
+
+NUM_CANDIDATES = 10
+
+PLANNER_NUM_SAMPLES = 700
+PLANNER_K_NEIGHBORS = 15
+PLANNER_EDGE_POINTS = 25
+
+
+# =====================================================================
+# DATASET
+# =====================================================================
+
+def load_problem(environment_name="tabletop", problem_index=171):
+    """Load one task-oriented MpiNets problem from the chosen environment."""
+    if not os.path.exists(DATASET_PATH):
+        raise FileNotFoundError(f"Dataset not found:\n{DATASET_PATH}")
+
+    with open(DATASET_PATH, "rb") as file:
+        dataset = pickle.load(file)
+
+    if environment_name not in dataset:
+        available = ", ".join(sorted(dataset.keys()))
+        raise KeyError(
+            f"Environment '{environment_name}' is not in the dataset. "
+            f"Available environments: {available}"
+        )
+
+    environment_data = dataset[environment_name]
+    if "task_oriented" not in environment_data:
+        raise KeyError(
+            f"Environment '{environment_name}' has no 'task_oriented' problem set."
+        )
+
+    problems = environment_data["task_oriented"]
+    if not 0 <= int(problem_index) < len(problems):
+        raise IndexError(
+            f"Problem index {problem_index} is outside the valid range "
+            f"0..{len(problems) - 1} for '{environment_name}'."
+        )
+
+    return problems[int(problem_index)]
+
+
+# =====================================================================
+# DASHBOARD CONFIGURATION HELPERS
+# =====================================================================
+
+def _load_dashboard_config(path):
+    if not path:
+        return {}
+    with open(path, "r", encoding="utf-8") as handle:
+        config = json.load(handle)
+    if not isinstance(config, dict):
+        raise ValueError("Dashboard configuration must be a JSON object.")
+    return config
+
+
+def _make_custom_obstacles(config):
+    """Convert dashboard obstacle rows into Environment's data contract."""
+    result = []
+    for i, item in enumerate(config.get("obstacles", []), start=1):
+        kind = str(item.get("type", config.get("obstacle_type", "Cylinder"))).strip().lower()
+        pos = [float(item[k]) for k in ("x", "y", "z")]
+        if kind == "cuboid":
+            dims = [float(item[k]) for k in ("w", "d", "h")]
+            if any(v <= 0 for v in dims):
+                raise ValueError(f"Obstacle {i}: cuboid width/depth/height must be positive.")
+            result.append({"type": "Cuboid", "position": np.asarray(pos),
+                           "half_extents": np.asarray(dims) / 2.0,
+                           "quaternion": np.asarray([1.0, 0.0, 0.0, 0.0])})
+        elif kind == "cylinder":
+            radius = float(item.get("radius", float(item.get("w", 0.16)) / 2.0))
+            height = float(item["h"] if "h" in item else item.get("height", 0.3))
+            if radius <= 0 or height <= 0:
+                raise ValueError(f"Obstacle {i}: cylinder radius and height must be positive.")
+            result.append({"type": "Cylinder", "position": np.asarray(pos),
+                           "radius": radius, "height": height,
+                           "quaternion": np.asarray([1.0, 0.0, 0.0, 0.0])})
+        else:
+            raise ValueError(f"Obstacle {i}: unsupported shape {kind!r}.")
+    return result
+
+
+def _ik_for_xyz(robot_id, xyz, client_id, orientation=None, collision_checker=None):
+    """Find a reachable Panda IK pose; when supplied, reject colliding poses."""
+    target = np.asarray(xyz, dtype=float)
+    if target.shape != (3,) or not np.all(np.isfinite(target)):
+        raise ValueError("XYZ target must contain exactly three finite numbers.")
+
+    kwargs = {
+        "bodyUniqueId": robot_id,
+        "endEffectorLinkIndex": 11,
+        "targetPosition": target.tolist(),
+        "maxNumIterations": 500,
+        "residualThreshold": 1e-5,
+        "physicsClientId": client_id,
+    }
+    if orientation is not None:
+        kwargs["targetOrientation"] = [float(v) for v in orientation]
+
+    # IK may have several joint-space solutions for the same XYZ point. Seed
+    # the solver from different arm poses instead of accepting only its first
+    # result, which may be unreachable or collide with the scene.
+    seeds = [
+        [0.0, -0.6, 0.0, -2.2, 0.0, 1.7, 0.8],
+        [0.0, 0.3, 0.0, -1.8, 0.0, 2.1, 0.8],
+        [0.8, -0.4, 0.4, -2.0, -0.4, 1.8, 0.2],
+        [-0.8, -0.4, -0.4, -2.0, 0.4, 1.8, -0.2],
+        [0.0, 0.8, 0.0, -1.5, 0.0, 2.0, 0.0],
+        [0.0, -1.0, 0.0, -2.4, 0.0, 1.5, 0.0],
+    ]
+    best_error = float("inf")
+    best_flags = None
+    unreachable = 0
+
+    for seed in seeds:
+        for j, value in enumerate(seed):
+            p.resetJointState(robot_id, j, float(value), physicsClientId=client_id)
+        solution = np.asarray(p.calculateInverseKinematics(**kwargs), dtype=float)
+        if solution.size < 7:
+            continue
+        q = solution[:7].copy()
+        for j, value in enumerate(q):
+            p.resetJointState(robot_id, j, float(value), physicsClientId=client_id)
+        state = p.getLinkState(robot_id, 11, computeForwardKinematics=True, physicsClientId=client_id)
+        actual = np.asarray(state[4], dtype=float)
+        error = float(np.linalg.norm(actual - target))
+        best_error = min(best_error, error)
+        if error > 0.04:
+            unreachable += 1
+            continue
+
+        if collision_checker is not None:
+            flags = collision_checker.check_configuration(q)
+            if flags["collision"]:
+                best_flags = flags
+                continue
+        return q
+
+    detail = f"Best position error: {best_error:.4f} m; IK attempts outside 4 cm tolerance: {unreachable}/{len(seeds)}."
+    if best_flags is not None:
+        detail += f" Last colliding IK flags: {best_flags}."
+    raise RuntimeError(
+        f"No valid IK pose found for XYZ {np.round(target, 3).tolist()}. {detail} "
+        "Try a reachable position and move obstacles away from the robot. Collision checking remains enabled."
+    )
+
+
+# =====================================================================
+# MAIN
+# =====================================================================
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Run the intelligent robot motion-planning pipeline."
+    )
+    parser.add_argument(
+        "--environment",
+        choices=("tabletop", "cubby", "merged_cubby", "dresser"),
+        default="tabletop",
+        help="MpiNets environment to load.",
+    )
+    parser.add_argument(
+        "--problem-index",
+        type=int,
+        default=None,
+        help="Index in that environment's task_oriented problem set.",
+    )
+    parser.add_argument(
+        "--num-candidates",
+        type=int,
+        default=NUM_CANDIDATES,
+        help="Number of candidate trajectories to request (1-30).",
+    )
+    parser.add_argument(
+        "--config-json",
+        default=None,
+        help="Optional JSON file containing dashboard XYZ and obstacle settings.",
+    )
+    args = parser.parse_args(argv)
+    dashboard_config = _load_dashboard_config(args.config_json)
+    if not 1 <= args.num_candidates <= 30:
+        parser.error("--num-candidates must be between 1 and 30")
+    if args.problem_index is None:
+        args.problem_index = 171 if args.environment == "tabletop" else 0
+
+    print("=" * 72)
+    print(
+        "FINAL INTELLIGENT ROBOT MOTION PLANNING DEMO"
+    )
+    print("=" * 72)
+    print(f"Run started: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Requested candidates: {args.num_candidates}")
+
+    direct_client = None
+    gui_client = None
+
+    try:
+
+        # =============================================================
+        # 1. LOAD MπNets
+        # =============================================================
+
+        print(
+            "\n[1] Loading MpiNets problem..."
+        )
+
+        problem = load_problem(args.environment, args.problem_index)
+
+        print(
+            f"    Environment : {args.environment}"
+        )
+        print(
+            "    Problem set : task_oriented"
+        )
+        print(
+            f"    Problem     : {args.problem_index}"
+        )
+
+        print("    [PASS]")
+
+        # =============================================================
+        # 2. PYBULLET DIRECT
+        # =============================================================
+
+        print(
+            "\n[2] Starting PyBullet..."
+        )
+
+        direct_client = p.connect(
+            p.DIRECT
+        )
+
+        if direct_client < 0:
+            raise RuntimeError(
+                "Failed to start PyBullet."
+            )
+
+        p.setAdditionalSearchPath(
+            pybullet_data.getDataPath()
+        )
+
+        p.loadURDF(
+            "plane.urdf",
+            physicsClientId=direct_client,
+        )
+
+        robot_id = p.loadURDF(
+            "franka_panda/panda.urdf",
+            useFixedBase=True,
+            physicsClientId=direct_client,
+        )
+
+        panda_robot = PandaRobot(
+            robot_id
+        )
+
+        print(
+            f"    Robot DOF: "
+            f"{panda_robot.DOF}"
+        )
+
+        print("    [PASS]")
+
+        # =============================================================
+        # 3. ENVIRONMENT
+        # =============================================================
+
+        print(
+            "\n[3] Creating environment..."
+        )
+
+        environment = (
+            Environment.from_mpinets_problem(
+                problem
+            )
+        )
+
+        # The dashboard obstacle count is authoritative for the obstacle layout.
+        # Keep the selected MpiNets problem's target/task data, but replace its
+        # obstacle list when the dashboard explicitly supplies an obstacle list.
+        dataset_obstacles = list(getattr(environment, "obstacles", []) or [])
+        if "obstacles" in dashboard_config:
+            custom_obstacles = _make_custom_obstacles(dashboard_config)
+            environment.obstacles = custom_obstacles
+            print(f"    Selected MpiNets environment: {args.environment}")
+            print(f"    Dataset obstacles replaced by dashboard layout: {len(dataset_obstacles)} -> {len(custom_obstacles)}")
+            print(f"    Dashboard obstacles requested: {len(custom_obstacles)}")
+        else:
+            environment.obstacles = dataset_obstacles
+            print(f"    Using dataset obstacles: {len(dataset_obstacles)}")
+        environment.num_obstacles = len(environment.obstacles)
+        print(f"    Obstacles used for collision checking: {environment.num_obstacles}")
+
+        obstacle_ids = (
+            environment.create_pybullet_obstacles(
+                direct_client
+            )
+        )
+
+        print(
+            f"    Obstacles: "
+            f"{len(obstacle_ids)}"
+        )
+
+        print("    [PASS]")
+
+        # =============================================================
+        # 4. MODULES
+        # =============================================================
+
+        print(
+            "\n[4] Initializing modules..."
+        )
+
+        collision_checker = (
+            CollisionChecker(
+                panda_robot,
+                environment,
+                direct_client,
+            )
+        )
+
+        clearance_analyzer = (
+            ClearanceAnalyzer(
+                panda_robot,
+                environment,
+                direct_client,
+            )
+        )
+
+        trajectory_generator = (
+            TrajectoryGenerator(
+                panda_robot
+            )
+        )
+
+        feature_extractor = (
+            TrajectoryFeatureExtractor(
+                collision_checker,
+                clearance_analyzer,
+                trajectory_generator,
+            )
+        )
+
+        recoverability_analyzer = (
+            RecoverabilityAnalyzer(
+                collision_checker,
+                trajectory_generator,
+            )
+        )
+
+        planner = (
+            ObstacleAwarePlanner(
+                panda_robot=panda_robot,
+                collision_checker=collision_checker,
+                trajectory_generator=trajectory_generator,
+                num_samples=PLANNER_NUM_SAMPLES,
+                k_neighbors=PLANNER_K_NEIGHBORS,
+                edge_points=PLANNER_EDGE_POINTS,
+                seed=42,
+            )
+        )
+
+        failure_predictor = (
+            FailurePredictor()
+        )
+
+        intelligent = (
+            IntelligentMotionPlanner(
+                planner=planner,
+                feature_extractor=feature_extractor,
+                failure_predictor=failure_predictor,
+                recoverability_analyzer=recoverability_analyzer,
+                collision_checker=collision_checker,
+            )
+        )
+
+        print("    [PASS]")
+
+        # =============================================================
+        # 5. START
+        # =============================================================
+
+        print(
+            "\n[5] Checking start configuration..."
+        )
+
+        if dashboard_config.get("start_xyz") is not None:
+            start_xyz = np.asarray(dashboard_config["start_xyz"], dtype=float)
+            if start_xyz.shape != (3,) or not np.all(np.isfinite(start_xyz)):
+                raise ValueError("Start XYZ must contain three finite numbers.")
+            start = _ik_for_xyz(robot_id, start_xyz, direct_client, collision_checker=collision_checker)
+            environment.start_configuration = start.copy()
+            print("    Dashboard start XYZ:", np.round(start_xyz, 4).tolist())
+        else:
+            start = np.asarray(problem.q0, dtype=float)
+
+        start_validation = (
+            collision_checker.check_configuration(
+                start
+            )
+        )
+
+        print("    Collision:", start_validation["collision"])
+        print("    Self-collision:", start_validation["self_collision"])
+        print("    Obstacle collision:", start_validation["obstacle_collision"])
+        print("    Joint-limit violation:", start_validation["joint_limit_violation"])
+
+        if start_validation["collision"]:
+            raise RuntimeError(
+                f"Start configuration is in collision: {start_validation}. "
+                "Try moving the start point or obstacles."
+            )
+
+        print("    [PASS]")
+
+        # =============================================================
+        # 6. TARGET DATA
+        # =============================================================
+
+        print(
+            "\n[6] Reading target configuration..."
+        )
+
+        # MπNets / geometrout in this environment
+        # stores SE3 data internally.
+
+        target_position = np.asarray(
+            problem.target._xyz,
+            dtype=float,
+        )
+        if dashboard_config.get("goal_xyz") is not None:
+            target_position = np.asarray(dashboard_config["goal_xyz"], dtype=float)
+            if target_position.shape != (3,) or not np.all(np.isfinite(target_position)):
+                raise ValueError("Goal XYZ must contain three finite numbers.")
+            environment.target_position = target_position.copy()
+            print("    Dashboard goal XYZ:", np.round(target_position, 4).tolist())
+
+        target_half_extents = (
+            np.asarray(
+                problem.target_volume._dims,
+                dtype=float,
+            )
+            / 2.0
+        )
+
+        target_quaternion = None
+
+        try:
+
+            target_quaternion = np.asarray(
+                problem.target._so3._quat.elements,
+                dtype=float,
+            )
+
+        except Exception:
+
+            try:
+
+                target_quaternion = np.asarray(
+                    problem.target._so3._quat,
+                    dtype=float,
+                )
+
+            except Exception:
+
+                target_quaternion = None
+
+        print(
+            "    Target position:",
+            np.round(
+                target_position,
+                4,
+            ),
+        )
+
+        print(
+            "    Target half extents:",
+            np.round(
+                target_half_extents,
+                4,
+            ),
+        )
+
+        print("    [PASS]")
+
+        # =============================================================
+        # 7. GENERATE COLLISION-FREE GOAL
+        # =============================================================
+
+        print(
+            "\n[7] Generating goal configuration..."
+        )
+
+        goal_generator = (
+            GoalConfigurationGenerator(
+                panda_robot=panda_robot,
+                environment=environment,
+                target_position=target_position,
+                target_half_extents=target_half_extents,
+                client_id=direct_client,
+            )
+        )
+
+        goal_solutions = (
+            goal_generator.solve_multiple(
+                num_solutions=10,
+                seed=42,
+            )
+        )
+
+        goal = None
+
+        for solution in goal_solutions:
+
+            candidate_goal = np.asarray(
+                solution[
+                    "configuration"
+                ],
+                dtype=float,
+            )
+
+            validation = (
+                collision_checker.check_configuration(
+                    candidate_goal
+                )
+            )
+
+            if not validation[
+                "collision"
+            ]:
+
+                goal = candidate_goal
+                break
+
+        if goal is None:
+
+            raise RuntimeError(
+                "Could not find a collision-free goal."
+            )
+
+        print(
+            "    Collision-free goal found."
+        )
+
+        print("    [PASS]")
+
+        # =============================================================
+        # 8. GENERATE CANDIDATES
+        # =============================================================
+
+        print(
+            "\n[8] Generating candidate trajectories..."
+        )
+
+        trajectories = (
+            intelligent.generate_candidates(
+                start,
+                goal,
+                args.num_candidates,
+            )
+        )
+
+        trajectories = list(
+            trajectories
+        )
+
+        print(
+            f"    Generated: "
+            f"{len(trajectories)}"
+        )
+
+        if not trajectories:
+
+            raise RuntimeError(
+                "No candidate trajectories generated."
+            )
+
+        for index, trajectory in enumerate(
+            trajectories
+        ):
+
+            print(
+                f"    Candidate {index + 1}: "
+                f"{trajectory.shape}"
+            )
+
+        print("    [PASS]")
+
+        # =============================================================
+        # 9. ML PREDICTION
+        # =============================================================
+
+        print(
+            "\n[9] Running ML failure prediction..."
+        )
+
+        predictions = (
+            intelligent.predict_candidates(
+                trajectories
+            )
+        )
+
+        for prediction in predictions:
+
+            index = (
+                prediction[
+                    "trajectory_index"
+                ]
+                + 1
+            )
+
+            predicted_class = str(
+                prediction[
+                    "predicted_class"
+                ]
+            ).lower()
+
+            success_probability = float(
+                prediction[
+                    "success_probability"
+                ]
+            )
+
+            failure_probability = float(
+                prediction[
+                    "failure_probability"
+                ]
+            )
+
+            print(
+                f"    Candidate {index}: "
+                f"{predicted_class} | "
+                f"success="
+                f"{success_probability:.4f} | "
+                f"failure="
+                f"{failure_probability:.4f}"
+            )
+
+        print("    [PASS]")
+
+        # =============================================================
+        # 10. EXPLANATION
+        # =============================================================
+
+        print(
+            "\n[10] Explaining ML predictions..."
+        )
+
+        for prediction in predictions:
+
+            index = (
+                prediction[
+                    "trajectory_index"
+                ]
+                + 1
+            )
+
+            print(
+                f"\n    Candidate {index}:"
+            )
+
+            contributions = (
+                prediction.get(
+                    "local_contributions"
+                )
+            )
+
+            if contributions is None:
+
+                contributions = (
+                    prediction.get(
+                        "feature_contributions"
+                    )
+                )
+
+            if isinstance(
+                contributions,
+                dict,
+            ):
+
+                sorted_items = sorted(
+                    contributions.items(),
+                    key=lambda item: abs(
+                        float(
+                            item[1]
+                        )
+                    ),
+                    reverse=True,
+                )
+
+                for name, value in sorted_items[
+                    :3
+                ]:
+
+                    print(
+                        f"      {name}: "
+                        f"{float(value):+.4f}"
+                    )
+
+            elif isinstance(
+                contributions,
+                list,
+            ):
+
+                for item in contributions[
+                    :3
+                ]:
+
+                    if isinstance(
+                        item,
+                        dict,
+                    ):
+
+                        name = item.get(
+                            "feature",
+                            item.get(
+                                "feature_name",
+                                "unknown",
+                            ),
+                        )
+
+                        value = item.get(
+                            "contribution",
+                            item.get(
+                                "shap_value",
+                                0.0,
+                            ),
+                        )
+
+                        print(
+                            f"      {name}: "
+                            f"{float(value):+.4f}"
+                        )
+
+            else:
+
+                print(
+                    "      Local feature "
+                    "contributions unavailable."
+                )
+
+        print(
+            "\n    [PASS]"
+        )
+
+        # =============================================================
+        # 11. PHYSICAL VALIDATION
+        # =============================================================
+
+        print(
+            "\n[11] Physically validating candidates..."
+        )
+
+        validations = (
+            intelligent.validate_candidates(
+                trajectories
+            )
+        )
+
+        feasible_count = 0
+
+        for validation in validations:
+
+            index = (
+                validation[
+                    "trajectory_index"
+                ]
+                + 1
+            )
+
+            valid = bool(
+                validation[
+                    "valid"
+                ]
+            )
+
+            if valid:
+                feasible_count += 1
+
+            print(
+                f"    Candidate {index}: "
+                f"{'SAFE' if valid else 'FAILED'}"
+            )
+
+        print(
+            f"    Physically feasible: "
+            f"{feasible_count}/"
+            f"{len(trajectories)}"
+        )
+
+        print("    [PASS]")
+
+        # =============================================================
+        # 12. COMBINE
+        # =============================================================
+
+        print(
+            "\n[12] Combining ML + physical results..."
+        )
+
+        combined = (
+            intelligent.combine_results(
+                trajectories,
+                predictions,
+                validations,
+            )
+        )
+
+        print(
+            f"    Combined results: "
+            f"{len(combined)}"
+        )
+
+        print("    [PASS]")
+
+        # =============================================================
+        # 13. RECOVERABILITY
+        # =============================================================
+
+        print(
+            "\n[13] Analyzing recoverability..."
+        )
+
+        recoverability = (
+            intelligent.analyze_recoverability(
+                trajectories
+            )
+        )
+
+        print("    Recoverability analysis complete.")
+        failed_physical_count = len(trajectories) - int(feasible_count)
+        print(f"    Physical validation cross-check: {int(feasible_count)}/{len(trajectories)} feasible; {failed_physical_count} failed.")
+        if failed_physical_count == 0:
+            print("    Interpretation: no generated candidate required recovery in this run.")
+            print("    Recovery still matters if a candidate fails in a future run; alternatives must pass physical validation.")
+
+        # Print details from the actual result structure without assuming
+        # the wrapper exposes exactly the same keys as RecoverabilityAnalyzer.
+        if isinstance(recoverability, dict):
+            summary = recoverability.get("summary", {})
+            if isinstance(summary, dict) and summary:
+                print("\n    RECOVERABILITY SUMMARY")
+                for label, key in (
+                    ("Total candidates", "total_candidates"),
+                    ("Physically feasible", "feasible_candidates"),
+                    ("Failed candidates", "failed_candidates"),
+                    ("Recoverable failures", "recoverable_failed_candidates"),
+                    ("Unrecoverable failures", "unrecoverable_failed_candidates"),
+                ):
+                    if key in summary:
+                        print(f"      {label}: {summary[key]}")
+                if "recoverability_rate" in summary:
+                    print(f"      Recoverability rate: {float(summary['recoverability_rate']):.1%}")
+            else:
+                for key, label in (
+                    ("recoverable_count", "Recoverable candidates"),
+                    ("unrecoverable_count", "Unrecoverable candidates"),
+                    ("recoverable_failed_candidates", "Recoverable failures"),
+                    ("unrecoverable_failed_candidates", "Unrecoverable failures"),
+                ):
+                    if key in recoverability:
+                        print(f"      {label}: {recoverability[key]}")
+            cases = recoverability.get("recoverable_candidates", [])
+            if isinstance(cases, list) and cases:
+                print("      Feasible fallback options:")
+                for case in cases:
+                    failed_idx = int(case.get("failed_candidate_index", -1)) + 1
+                    alternatives = case.get("alternatives", [])
+                    alt_indices = [int(a.get("candidate_index", -1)) + 1 for a in alternatives[:5]]
+                    print(f"        Candidate {failed_idx} -> alternatives {alt_indices}")
+            elif isinstance(summary, dict) and summary.get("failed_candidates", 0) == 0:
+                print("      No candidate failed physical validation; recovery was not required.")
+
+        print("    [PASS]")
+
+        # =============================================================
+        # 14. SELECTION
+        # =============================================================
+
+        print(
+            "\n[14] Selecting final trajectory..."
+        )
+
+        selected = (
+            intelligent.select_final_trajectory(
+                combined
+            )
+        )
+
+        if not selected[
+            "success"
+        ]:
+
+            raise RuntimeError(
+                "No physically feasible trajectory "
+                "could be selected."
+            )
+
+        selected_index = int(
+            selected[
+                "selected_index"
+            ]
+        )
+
+        selected_trajectory = np.asarray(
+            selected[
+                "trajectory"
+            ],
+            dtype=float,
+        )
+
+        print(
+            f"    Selected candidate: "
+            f"{selected_index + 1}"
+        )
+
+        print(
+            f"    ML success probability: "
+            f"{selected['success_probability']:.4f}"
+        )
+
+        print(
+            f"    ML failure probability: "
+            f"{selected['failure_probability']:.4f}"
+        )
+
+        feasible_indices = [
+            int(item.get("trajectory_index", i))
+            for i, item in enumerate(validations)
+            if bool(item.get("valid", False))
+        ]
+        print("\n    WHY THIS TRAJECTORY WAS CHOSEN")
+        print(f"      Candidate {selected_index + 1} was chosen by the planner's combined selection step.")
+        print(f"      Physically feasible: {'YES' if selected_index in feasible_indices else 'NOT CONFIRMED — inspect validation'}.")
+        print(f"      ML estimates success={float(selected['success_probability']):.4f}, failure={float(selected['failure_probability']):.4f}.")
+        print("      Collision checking is the final safety gate; ML probability alone does not prove safety.")
+        if feasible_indices:
+            print(f"      Physically feasible candidate IDs: {[i + 1 for i in feasible_indices]}.")
+        print("      The selected path must pass final trajectory verification before animation.")
+
+        print("    [PASS]")
+
+        # =============================================================
+        # 15. FINAL VERIFICATION
+        # =============================================================
+
+        print(
+            "\n[15] Final physical verification..."
+        )
+
+        final_validation = (
+            collision_checker.check_trajectory(
+                selected_trajectory
+            )
+        )
+
+        print(
+            "    Collision-free:",
+            final_validation[
+                "collision_free"
+            ],
+        )
+
+        print(
+            "    Collision count:",
+            final_validation[
+                "collision_count"
+            ],
+        )
+
+        print(
+            "    Joint-limit violations:",
+            final_validation[
+                "joint_limit_violation_count"
+            ],
+        )
+
+        if not final_validation[
+            "collision_free"
+        ]:
+
+            raise RuntimeError(
+                "Selected trajectory failed final "
+                "physical verification."
+            )
+
+        print("    [PASS]")
+
+        # =============================================================
+        # 16. DISCONNECT DIRECT
+        # =============================================================
+
+        print(
+            "\n[16] Switching to GUI..."
+        )
+
+        if (
+            direct_client is not None
+            and p.isConnected(
+                direct_client
+            )
+        ):
+
+            p.disconnect(
+                direct_client
+            )
+
+            direct_client = None
+
+        # =============================================================
+        # 17. GUI
+        # =============================================================
+
+        print(
+            "\n[17] Opening PyBullet visualization..."
+        )
+
+        gui_client = p.connect(
+            p.GUI
+        )
+
+        if gui_client < 0:
+
+            raise RuntimeError(
+                "Could not open PyBullet GUI."
+            )
+
+        p.setAdditionalSearchPath(
+            pybullet_data.getDataPath()
+        )
+
+        # =============================================================
+        # 18. VISUALIZER
+        # =============================================================
+
+        visual_robot_id = p.loadURDF(
+            "franka_panda/panda.urdf",
+            useFixedBase=True,
+            physicsClientId=gui_client,
+        )
+
+        visual_robot = PandaRobot(
+            visual_robot_id
+        )
+
+        visualizer = RobotVisualizer(
+            panda_robot=visual_robot,
+            environment=environment,
+            client_id=gui_client,
+        )
+
+        if not visualizer.create_environment():
+
+            raise RuntimeError(
+                "Failed to create GUI environment."
+            )
+
+        print(
+            f"    Visualization environment created for: {args.environment}"
+        )
+
+        # =============================================================
+        # 19. PRESENTATION: USER REQUEST + ENVIRONMENT
+        # =============================================================
+
+        print(
+            "\n[18] Showing user request and environment..."
+        )
+
+        # Mark the actual Cartesian start/end positions.
+        # The visualizer expects a (N, 7) trajectory, not a single (7,) state.
+        # Use the known start and selected goal configurations to mark the start
+        # end-effector pose correctly before candidate paths are displayed.
+        visualizer.mark_start_and_goal(
+            np.vstack((start, goal)),
+            target_position=target_position,
+        )
+
+        visualizer.set_camera(
+            distance=1.15,
+            yaw=42,
+            pitch=-35,
+            target_position=target_position,
+        )
+
+        start_ee = visualizer.get_end_effector_position()
+        if start_ee is None:
+            start_ee = np.zeros(3)
+
+        visualizer.show_user_input_panel(
+            start_position=start_ee,
+            goal_position=target_position,
+            obstacle_count=len(environment.obstacles),
+            candidate_count=len(trajectories),
+            hold_time=3.0,
+        )
+
+        print(
+            "    Environment shown before path generation."
+        )
+
+        # =============================================================
+        # 20. STAGED CANDIDATE GENERATION
+        # =============================================================
+
+        print(
+            "\n[19] Revealing candidate trajectories one by one..."
+        )
+
+        visualizer.draw_multiple_trajectories(
+            trajectories,
+            selected_index=selected_index,
+            highlight_after=False,
+            staged=True,
+        )
+
+        print(
+            "    All candidate paths generated."
+        )
+
+        # =============================================================
+        # 21. ML EXPLANATION
+        # =============================================================
+
+        print(
+            "\n[20] Showing ML failure explanation..."
+        )
+
+        visualizer.show_ml_explanation_panel(
+            predictions,
+            selected_index=selected_index,
+            hold_time=4.0,
+        )
+
+        # =============================================================
+        # 22. RECOVERABILITY
+        # =============================================================
+
+        print(
+            "\n[21] Showing recoverability analysis..."
+        )
+
+        visualizer.show_recoverability_panel(
+            recoverability=recoverability,
+            feasible_count=feasible_count,
+            total_count=len(trajectories),
+            hold_time=3.0,
+        )
+
+        # =============================================================
+        # 23. FINAL SELECTION
+        # =============================================================
+
+        print(
+            "\n[22] Highlighting final feasible trajectory..."
+        )
+
+        selected_prediction = next(
+            (
+                item for item in predictions
+                if int(item.get("trajectory_index", -1)) == selected_index
+            ),
+            None,
+        )
+        visualizer.highlight_selected_path(
+            selected_trajectory,
+            selected_index=selected_index,
+            total_candidates=len(trajectories),
+            hold_time=2.0,
+            selected_prediction=selected_prediction,
+            feasible_count=feasible_count,
+        )
+
+        # =============================================================
+        # 24. EXECUTION
+        # =============================================================
+
+        print(
+            "\n[23] Animating selected trajectory..."
+        )
+
+        visualizer.animate_trajectory(
+            selected_trajectory,
+            frame_delay=0.10,
+            loop=False,
+            hold_at_end=True,
+            hold_time=3.0,
+            candidate_index=selected_index,
+            total_candidates=len(trajectories),
+        )
+
+        # =============================================================
+        # FINAL SUMMARY
+        # =============================================================
+
+        print(
+            "\n" + "=" * 72
+        )
+
+        print(
+            "FINAL END-TO-END DEMO COMPLETED"
+        )
+
+        print(
+            "=" * 72
+        )
+
+        print(
+            f"Candidates generated : "
+            f"{len(trajectories)}"
+        )
+
+        print(
+            f"Physically feasible  : "
+            f"{feasible_count}"
+        )
+
+        print(
+            f"Selected candidate   : "
+            f"{selected_index + 1}"
+        )
+
+        print(
+            "Final trajectory safe: YES"
+        )
+
+        print(
+            "=" * 72
+        )
+
+        # Keep GUI alive briefly.
+        if (
+            gui_client is not None
+            and p.isConnected(
+                gui_client
+            )
+        ):
+
+            time.sleep(
+                1.0
+            )
+
+    finally:
+
+        if (
+            direct_client is not None
+            and p.isConnected(
+                direct_client
+            )
+        ):
+
+            p.disconnect(
+                direct_client
+            )
+
+        if (
+            gui_client is not None
+            and p.isConnected(
+                gui_client
+            )
+        ):
+ 
+            p.disconnect(
+                gui_client
+            )
+
+
+# =====================================================================
+# ENTRY POINT
+# =====================================================================
+
+def _print_friendly_failure(exc):
+    """Explain common pipeline failures without dumping a Python traceback."""
+    message = str(exc).strip()
+    lowered = message.lower()
+
+    print("\n" + "=" * 70)
+    print("⚠️  THE MOTION-PLANNING RUN COULD NOT CONTINUE")
+    print("=" * 70)
+
+    if "could not find a collision-free goal" in lowered:
+        print("WHAT HAPPENED:")
+        print("  The planner tried to find a goal joint configuration, but none of")
+        print("  the tested configurations passed the physical collision checks.")
+        print("\nPOSSIBLE REASONS:")
+        print("  • The goal or the robot's approach to it is too close to an obstacle.")
+        print("  • The goal has reachable IK solutions, but those solutions collide.")
+        print("  • The requested goal may be outside the usable workspace or constraints.")
+        print("\nWHAT TO TRY:")
+        print("  1. Move the goal a little, keeping it within the robot's reachable area.")
+        print("  2. Move nearby obstacles away from the goal/approach area.")
+        print("  3. Run again and check the new collision diagnostics.")
+    elif "start configuration is in collision" in lowered or "no valid ik pose found" in lowered:
+        print("WHAT HAPPENED:")
+        print("  The requested start position did not produce a valid, collision-free")
+        print("  robot configuration.")
+        print("\nWHAT TO TRY:")
+        print("  1. Move the start point or nearby obstacles slightly.")
+        print("  2. Keep the point within the robot's reachable workspace.")
+        print("  3. Check the collision flags printed above this message.")
+    elif "candidate" in lowered and ("feasible" in lowered or "trajectory" in lowered):
+        print("WHAT HAPPENED:")
+        print("  The planner could not produce or select a trajectory that satisfied")
+        print("  the required checks.")
+        print("\nWHAT TO TRY:")
+        print("  1. Adjust the start, goal, or obstacle layout.")
+        print("  2. Try generating more candidate trajectories if supported.")
+        print("  3. Keep physical collision validation enabled.")
+    else:
+        print("WHAT HAPPENED:")
+        print("  An unexpected problem stopped the pipeline before it could finish.")
+        print("\nWHAT TO CHECK:")
+        print("  • Confirm the project files and required model files are present.")
+        print("  • Read the technical detail below and share it for diagnosis.")
+
+    print("\nTECHNICAL DETAIL:")
+    print("  " + (message if message else repr(exc)))
+    print("\nSAFETY:")
+    print("  The run stopped instead of proceeding with an unverified trajectory.")
+    print("  Collision checking has not been disabled.")
+    print("=" * 70)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n⚠️  Run cancelled by the user. No further trajectory execution started.")
+        sys.exit(130)
+    except Exception as exc:
+        _print_friendly_failure(exc)
+        sys.exit(1)

@@ -1,0 +1,19 @@
+[
+  "interior_mean_clearance",
+  "interior_clearance_std",
+  "interior_maximum_clearance",
+  "interior_low_clearance_count",
+  "interior_low_clearance_fraction",
+  "number_of_low_clearance_runs",
+  "longest_low_clearance_run",
+  "joint_space_length",
+  "max_joint_step",
+  "max_joint_velocity",
+  "mean_joint_velocity",
+  "max_joint_acceleration",
+  "mean_joint_acceleration",
+  "minimum_joint_limit_distance",
+  "mean_joint_limit_distance",
+  "minimum_normalized_joint_limit_distance",
+  "mean_normalized_joint_limit_distance"
+]
