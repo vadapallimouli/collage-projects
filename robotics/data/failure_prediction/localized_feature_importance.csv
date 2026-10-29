@@ -1,0 +1,5 @@
+model,feature,importance,percentage
+Random Forest,longest_low_clearance_run,0.10364019645632147,10.364019645632148
+Random Forest,number_of_low_clearance_runs,0.05452796889606874,5.452796889606875
+XGBoost,longest_low_clearance_run,0.019902469590306282,1.9902470111846924
+XGBoost,number_of_low_clearance_runs,0.018694879487156868,1.869488000869751
