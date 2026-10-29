@@ -1,0 +1,142 @@
+```html
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    />
+
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <meta name="theme-color" content="#b31925" />
+
+    <meta name="mobile-web-app-capable" content="yes" />
+
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+
+    <meta
+        name="apple-mobile-web-app-status-bar-style"
+        content="default"
+    />
+
+    <meta
+        name="apple-mobile-web-app-title"
+        content="e-SmartBlood"
+    />
+
+    <!-- PAGE TITLE -->
+    <title>e-SmartBlood | Blood donor network</title>
+
+    <!-- GOOGLE FONTS -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+
+    <link
+        rel="preconnect"
+        href="https://fonts.gstatic.com"
+        crossorigin
+    />
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap"
+        rel="stylesheet"
+    />
+
+    <!-- MAIN CSS -->
+    <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+
+    <!-- BACKGROUND EFFECTS -->
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+
+    <!-- HEADER -->
+    <header class="site-header" id="siteHeader">
+
+        <!-- BRAND -->
+        <div class="brand" aria-label="e-SmartBlood">
+
+            <span class="brand-mark">+</span>
+
+            <span class="brand-name">
+                <span class="brand-initial" style="color: #ba1a1a;">e</span>-Smart<span>Blood</span>
+            </span>
+
+        </div>
+
+        <!-- MOBILE MENU BUTTON -->
+        <button
+            class="mobile-menu-button"
+            id="mobileMenuButton"
+            type="button"
+            aria-label="Open menu"
+            aria-expanded="false"
+        >
+            ☰
+        </button>
+
+        <!-- NAVIGATION -->
+        <nav id="siteNav">
+
+            <button data-route="home" type="button">
+                Home
+            </button>
+
+            <button data-route="find" type="button">
+                Find donors
+            </button>
+
+            <button data-route="requests" type="button">
+                My requests
+            </button>
+
+            <button data-route="status" type="button">
+                Donor status
+            </button>
+
+            <button data-route="notifications" type="button">
+                🔔 Notifications
+            </button>
+
+            <button
+                class="nav-cta"
+                data-route="register"
+                type="button"
+            >
+                Become a donor
+            </button>
+
+            <button
+                class="logout-button"
+                data-action="logout"
+                type="button"
+            >
+                Logout
+            </button>
+
+        </nav>
+
+    </header>
+
+    <!-- MAIN APPLICATION -->
+    <main id="app" tabindex="-1"></main>
+
+    <!-- MODALS -->
+    <div id="modal-root"></div>
+
+    <!-- TOAST MESSAGES -->
+    <div id="toast-root" aria-live="polite"></div>
+
+    <!-- APPLICATION JAVASCRIPT -->
+    <script type="module" src="app.js"></script>
+
+</body>
+
+</html>
+```
